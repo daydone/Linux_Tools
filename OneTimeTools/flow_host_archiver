@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Get today's date in seconds since the Unix epoch
+today_date=$(date +%s)
+
+# Loop through items (files or directories) with the pattern 'YYYY-MM-DD*'
+for item in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*; do
+    # Check if it's a file or directory
+    if [ -f "$item" ] || [ -d "$item" ]; then
+        # Extract date from item name
+        item_date=$(echo "$item" | grep -oP '^\d{4}-\d{2}-\d{2}')
+
+        # Convert item date to seconds since epoch
+        item_date_sec=$(date -d "$item_date" +%s)
+
+        # Compare dates and run rsync if the item is older
+        if [ $item_date_sec -lt $today_date ]; then
+            echo "Syncing $item"
+            rsync --remove-source-files -av "$item" fromflowpnp@archive-pnp:/media/
+        fi
+    fi
+done
