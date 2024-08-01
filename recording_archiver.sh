@@ -15,7 +15,7 @@ log_file="/var/log/check_logs.log"
 
 # Function to log messages
 log() {
-    echo "$(date "+%Y-%m-%d %H:%M:%S") - $1" >> "$log_file"
+    echo "$(date -d "yesterday 13:00" "+%Y-%m-%d") - $1" >> "$log_file"
 }
 
 # Log process start time
