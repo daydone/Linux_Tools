@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # List of server IPs
-servers=("10.0.96.7" "10.0.96.8" "10.0.96.9" "10.0.96.10" "10.0.96.11" "10.0.96.12" "10.0.96.13")
 
 # Loop through each server and execute the commands
 for server in "${servers[@]}"
