@@ -1,0 +1,114 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+# Reference official ArgoCD manifests
+resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v2.13.2/manifests/install.yaml
+
+# Patch application-controller with resource limits to prevent CPU exhaustion
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: StatefulSet
+      name: argocd-application-controller
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: argocd-server
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                          - argocd-server
+                  topologyKey: kubernetes.io/hostname
+
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: argocd-repo-server
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                          - argocd-repo-server
+                  topologyKey: kubernetes.io/hostname
+
+  - target:
+      group: apps
+      version: v1
+      kind: StatefulSet
+      name: argocd-application-controller
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app.kubernetes.io/name
+                        operator: In
+                        values:
+                          - argocd-application-controller
+                  topologyKey: kubernetes.io/hostname

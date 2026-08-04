@@ -1,0 +1,535 @@
+# AI Assistant Context for noctel-gitops Repository
+
+This file contains comprehensive context for AI assistants to continue working on this GitOps repository. Use this when starting a new AI session or when context is lost.
+
+## PROJECT OVERVIEW
+
+You are working on a multi-cluster Kubernetes GitOps deployment using ArgoCD. The infrastructure consists of:
+- **pdx1 cluster**: Primary cluster (10.0.95.x network), 5 server nodes + 2 worker nodes, K3S v1.28.5
+- **pdx2 cluster**: Secondary cluster (10.0.96-99.x networks), multi-VLAN setup
+- **Environments**: dev, qa, prod (as Kubernetes namespaces in each cluster)
+- **GitOps Tool**: ArgoCD for automated deployments
+- **CNI**: Cilium v1.16.5 with VXLAN
+- **Load Balancer**: MetalLB for bare metal
+
+## REPOSITORY STRUCTURE
+
+```
+noctel-gitops/ (current working directory)
+├── argocd-applications/          # Cluster-specific ArgoCD Application manifests
+│   ├── pdx1/
+│   │   ├── dev/                  # 16 application YAMLs for pdx1 dev
+│   │   ├── qa/                   # 16 application YAMLs for pdx1 qa
+│   │   └── prod/                 # 16 application YAMLs for pdx1 prod
+│   └── pdx2/
+│       ├── dev/                  # 17 application YAMLs for pdx2 dev
+│       ├── qa/                   # 17 application YAMLs for pdx2 qa
+│       └── prod/                 # 17 application YAMLs for pdx2 prod (to be created)
+├── environments/                 # Cluster and environment-specific values
+│   ├── pdx1/
+│   │   ├── pdx1-dev-config.yaml        # 513 lines - COMPLETE
+│   │   ├── pdx1-qa-config.yaml         # 570 lines - COMPLETE
+│   │   ├── pdx1-prod-config.yaml       # 84 lines - INCOMPLETE (needs expansion to 513+)
+│   │   └── pdx1-metallb-config.yaml    # TO BE CREATED
+│   └── pdx2/
+│       ├── pdx2-dev-config.yaml        # 513 lines - COMPLETE
+│       ├── pdx2-qa-config.yaml         # 570 lines - COMPLETE
+│       ├── pdx2-prod-config.yaml       # 84 lines - INCOMPLETE (needs expansion to 513+)
+│       └── pdx2-metallb-config.yaml    # 58 lines - COMPLETE
+├── manifests/                    # Helm charts for all services
+│   ├── noctel-api/
+│   ├── noctel-ui/
+│   ├── noctel-lns/
+│   ├── noctel-ape/
+│   ├── noctel-display/
+│   ├── noctel-migrate/
+│   ├── chirpstack-core/
+│   ├── chirpstack-gateway-bridge/
+│   ├── chirpstack-mosquitto/
+│   ├── traefik/
+│   ├── redis/
+│   ├── rabbitmq/
+│   ├── elasticsearch/
+│   ├── seaweedfs/
+│   ├── nt-mq-mailer/
+│   ├── noctel-aps/
+│   └── metallb/                  # PARTIALLY CREATED (needs ArgoCD app manifests)
+│       ├── Chart.yaml
+│       ├── templates/
+│       │   ├── ipaddresspools.yaml
+│       │   └── l2advertisements.yaml
+└── charts/                       # Copy of manifests/ (both exist for compatibility)
+```
+
+## KEY FILE LOCATIONS
+
+### Ansible Playbooks (on AWX server at 10.0.90.203)
+Location: `/root/noctel-ansible-playbooks/K3S-Cluster/`
+```
+0-configure-network.yaml         # Network setup, hostnames, SSH keys
+1-prepare-nodes.yaml             # System updates, K3S uninstall
+2-install-k3s-server.yaml        # K3S control plane installation
+3-install-k3s-worker.yaml        # K3S worker installation
+4-install-cilium.yaml            # Cilium CNI with cluster-specific naming
+5-install-argocd.yaml            # ArgoCD installation
+6-bootstrap-gitops.yaml          # Bootstrap GitOps repo and applications
+```
+
+### Kubectl Configs (local machine)
+Location: `~/.kube/config`
+```yaml
+contexts:
+  - name: pdx1-cluster
+    cluster: pdx1-cluster
+    user: pdx1-cluster
+  - name: pdx2-cluster
+    cluster: pdx2-cluster
+    user: pdx2-cluster
+```
+
+## WHAT HAS BEEN DONE
+
+### Phase 1: Cluster Bootstrap (pdx1)
+✅ Deployed pdx1 cluster with 7 nodes using Ansible playbooks
+✅ Installed K3S v1.28.5+k3s1 on all nodes
+✅ Installed Cilium CNI v1.16.5 with VXLAN
+✅ Installed ArgoCD in argocd namespace
+✅ Configured SSH authentication for GitOps repo
+✅ Fixed repository URL to use correct Bitbucket path: `git@bitbucket.org:noctel-bitbucket/noctel-gitops.git`
+
+### Phase 2: Multi-Cluster Directory Structure
+✅ Created cluster-specific directory structure (argocd-applications/pdx1/ and pdx2/)
+✅ Created 48 ArgoCD application manifests for pdx1 (16 dev, 16 qa, 16 prod)
+✅ Created 48 ArgoCD application manifests for pdx2 (16 dev, 16 qa, 16 prod)
+✅ Each application references cluster-specific values files (e.g., pdx1-dev-config.yaml)
+
+### Phase 3: Configuration Files
+✅ Created pdx1-dev-config.yaml (513 lines) with complete service configs
+✅ Created pdx1-qa-config.yaml (570 lines) with complete service configs
+✅ Created pdx1-prod-config.yaml (84 lines) - INCOMPLETE, needs expansion
+✅ Created pdx2-dev-config.yaml (513 lines) - complete
+✅ Created pdx2-qa-config.yaml (570 lines) - complete
+✅ Created pdx2-prod-config.yaml (84 lines) - INCOMPLETE, needs expansion
+
+### Phase 4: Application Deployment
+✅ Deployed 48 ArgoCD applications to pdx1 cluster
+✅ Copied dockerhub-secret from pdx2 to pdx1 (all namespaces)
+✅ Created SSH key secret for ArgoCD repository access
+✅ Merged kubectl configs for both clusters
+
+### Phase 5: Infrastructure Setup (In Progress)
+✅ Created MetalLB Helm chart structure in manifests/metallb/
+✅ Created MetalLB templates for IPAddressPool and L2Advertisement
+✅ Created pdx2-metallb-config.yaml with IP ranges and VLAN interfaces
+⚠️ Need to create pdx1-metallb-config.yaml (awaiting IP ranges from user)
+⚠️ Need to create ArgoCD application manifests for MetalLB deployment
+
+## WHAT NEEDS TO BE DONE NEXT
+
+### PRIORITY 1: Complete MetalLB Setup
+1. Create `environments/pdx1/pdx1-metallb-config.yaml` with pdx1-specific IP ranges
+   - User needs to provide IP address ranges for dev, qa, prod, management VLANs
+   - User needs to provide interface names (e.g., bond0.677, bond0.678, etc.)
+
+2. Create ArgoCD application manifests:
+   - `argocd-applications/pdx1/infrastructure/metallb.yaml`
+   - `argocd-applications/pdx2/infrastructure/metallb.yaml`
+
+3. Deploy MetalLB to both clusters
+4. Verify LoadBalancer services can get external IPs
+
+### PRIORITY 2: Complete Production Configurations
+1. Expand `environments/pdx1/pdx1-prod-config.yaml` from 84 to 513+ lines
+   - Add all infrastructure service configs (elasticsearch, rabbitmq, redis, seaweedfs)
+   - Add all application service configs with production versions
+   - Reference pdx1-dev-config.yaml or pdx2-dev-config.yaml for complete structure
+
+2. Expand `environments/pdx2/pdx2-prod-config.yaml` similarly
+
+### PRIORITY 3: Fix Degraded Applications
+1. Investigate why many pdx1 applications show "Degraded" or "Unknown" status
+2. Ensure infrastructure services deploy first (databases, message queues)
+3. Fix QA applications with nil pointer errors (missing `global.namespace`)
+4. Update image tags from "latest" to specific versions where needed
+
+### PRIORITY 4: Create Production ArgoCD Apps for pdx2
+1. Create 16 production ArgoCD application manifests in `argocd-applications/pdx2/prod/`
+2. Mirror the structure of dev and qa applications
+3. Deploy to pdx2 cluster to replace manual Helm deployments
+
+## COMMON COMMANDS
+
+### Kubectl Access
+```bash
+# Access pdx1 cluster
+kubectl --context pdx1-cluster get nodes
+kubectl --context pdx1-cluster get pods -n dev
+kubectl --context pdx1-cluster get applications -n argocd
+
+# Access pdx2 cluster
+kubectl --context pdx2-cluster get nodes
+kubectl --context pdx2-cluster get pods -n prod
+kubectl --context pdx2-cluster get applications -n argocd
+```
+
+### SSH Access to Cluster Nodes
+```bash
+# pdx1 nodes
+ssh finbar.day@10.0.95.30   # pdx1-kserver0 (main control plane node)
+ssh finbar.day@10.0.95.31   # pdx1-kserver1
+ssh finbar.day@10.0.95.32   # pdx1-kserver2
+ssh finbar.day@10.0.95.33   # pdx1-kserver3
+ssh finbar.day@10.0.95.34   # pdx1-kserver4
+ssh finbar.day@10.0.95.40   # pdx1-kworker0
+ssh finbar.day@10.0.95.41   # pdx1-kworker1
+
+# AWX/Ansible control node
+ssh finbar.day@10.0.90.203  # pdx-ansible
+```
+
+### ArgoCD Access
+```bash
+# Port forward pdx1 ArgoCD UI
+ssh -L 8080:localhost:8080 finbar.day@10.0.95.30 \
+  "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl port-forward svc/argocd-server -n argocd 8080:443"
+
+# Get ArgoCD admin password
+kubectl --context pdx1-cluster get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+
+# Access UI
+https://localhost:8080
+# Username: admin
+# Password: (from command above)
+```
+
+### Deploy Applications
+```bash
+# Deploy all dev applications to pdx1
+kubectl --context pdx1-cluster apply -f argocd-applications/pdx1/dev/
+
+# Deploy single application
+kubectl --context pdx1-cluster apply -f argocd-applications/pdx1/dev/dev-noctel-api.yaml
+
+# Check application status
+kubectl --context pdx1-cluster get applications -n argocd
+```
+
+### Git Operations
+```bash
+# Add and commit changes
+git add .
+git commit -m "Description of changes"
+git push origin main
+
+# Check status
+git status
+git log --oneline -10
+```
+
+## KNOWN ISSUES AND SOLUTIONS
+
+### Issue 1: Applications Show "Unknown" Status
+**Cause**: Incomplete configuration files missing required values
+**Solution**:
+- Compare config file size (should be 513+ lines like dev/qa)
+- Add missing service configurations
+- Ensure infrastructure services are configured (elasticsearch, redis, rabbitmq)
+
+### Issue 2: ImagePullBackOff Errors
+**Cause**: Missing dockerhub-secret in namespace
+**Solution**:
+```bash
+kubectl --context pdx1-cluster create secret docker-registry dockerhub-secret \
+  --docker-server=index.docker.io/v1/ \
+  --docker-username=noctel \
+  --docker-password=97ErJtb5o6q3WPomXGa8 \
+  -n <namespace>
+```
+
+### Issue 3: Repository Authentication Failed
+**Cause**: Missing or incorrect SSH key in ArgoCD
+**Solution**:
+```bash
+# Copy SSH key from pdx2 to local temp file
+kubectl --context pdx2-cluster get secret noctel-gitops-repo -n argocd -o jsonpath='{.data.sshPrivateKey}' | base64 -d > /tmp/argocd-ssh-key
+
+# Create secret in pdx1
+kubectl --context pdx1-cluster create secret generic noctel-gitops-repo \
+  --from-literal=type=git \
+  --from-literal=url='git@bitbucket.org:noctel-bitbucket/noctel-gitops.git' \
+  --from-file=sshPrivateKey=/tmp/argocd-ssh-key \
+  --from-literal=name=noctel-gitops \
+  -n argocd
+
+kubectl --context pdx1-cluster label secret noctel-gitops-repo \
+  argocd.argoproj.io/secret-type=repository -n argocd
+```
+
+### Issue 4: Port Forward Keeps Dying
+**Cause**: SSH connection timeout or network instability
+**Solution**: Re-run port forward command (no fix yet for persistent connection)
+
+### Issue 5: QA Apps Have Template Rendering Errors
+**Cause**: Missing `global.namespace` in qa config files
+**Solution**: Add to qa-config.yaml:
+```yaml
+global:
+  cluster: pdx1
+  namespace: qa  # Add this line
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+```
+
+## ARCHITECTURE DECISIONS
+
+### Why Cluster-Specific Directories?
+- Each cluster has different network configurations (IPs, VLANs, domains)
+- Allows independent management of different datacenters
+- Scales to support additional clusters (man1, sfo1, etc.)
+- Clear separation prevents accidental cross-cluster deployments
+
+### Why Both charts/ and manifests/?
+- Legacy: applications originally referenced `path: charts/`
+- Current: new structure uses `path: manifests/`
+- Both exist for compatibility during migration
+- Eventually will consolidate to single directory
+
+### Why SSH Authentication for Git?
+- More secure than HTTPS with tokens
+- Consistent with existing pdx2 setup
+- Private key managed in Kubernetes secret
+- Bitbucket SSH key format: `git@bitbucket.org:noctel-bitbucket/noctel-gitops.git`
+
+### Why Separate Config Files per Cluster?
+- Different IP ranges and network configs
+- Different domain names (pdx1-dev.telnoc.com vs pdx2-dev.telnoc.com)
+- Different resource allocations
+- Allows cluster-specific customization
+
+## IMPORTANT CREDENTIALS
+
+### Bitbucket Repository
+- URL: `git@bitbucket.org:noctel-bitbucket/noctel-gitops.git`
+- Authentication: SSH key (stored in ArgoCD secret)
+
+### Docker Registry
+- Server: `index.docker.io/v1/`
+- Username: `noctel`
+- Password: `97ErJtb5o6q3WPomXGa8`
+
+### ArgoCD Admin
+- Username: `admin`
+- Password: Retrieved via: `kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d`
+
+## HELM CHART STRUCTURE
+
+Each service has a Helm chart in manifests/ with standard structure:
+```
+manifests/service-name/
+├── Chart.yaml           # Chart metadata and dependencies
+├── values.yaml          # Default values (usually empty or minimal)
+└── templates/
+    ├── deployment.yaml  # Kubernetes Deployment
+    ├── service.yaml     # Kubernetes Service
+    ├── ingress.yaml     # Traefik IngressRoute
+    └── configmap.yaml   # ConfigMap (if needed)
+```
+
+Values are provided via cluster-specific config files (e.g., pdx1-dev-config.yaml).
+
+## VALUES FILE STRUCTURE
+
+Complete config files (513+ lines) have this structure:
+```yaml
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+  imagePullSecrets:
+    - name: dockerhub-secret
+  dockerRegistry:
+    server: "index.docker.io/v1/"
+    username: "noctel"
+    password: "97ErJtb5o6q3WPomXGa8"
+
+# Application services
+noctel-api:
+  version: "latest"
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 4000
+  ingress:
+    enabled: true
+    host: "noctel-api.pdx1-dev.telnoc.com"
+  config:
+    # ... service-specific config
+
+# Infrastructure services
+elasticsearch:
+  enabled: true
+  replicas: 1
+  persistence:
+    storageClass: "local-path"
+    size: "50Gi"
+  # ... elasticsearch config
+
+redis:
+  enabled: true
+  # ... redis config
+
+rabbitmq:
+  enabled: true
+  # ... rabbitmq config
+
+# ... all other services
+```
+
+## METALLB CONFIGURATION
+
+MetalLB requires:
+1. IP address pools per environment
+2. L2 advertisements with VLAN interface mappings
+
+Example (pdx2-metallb-config.yaml):
+```yaml
+namespace: metallb-system
+
+ipAddressPools:
+  - name: dev-vlan-pool
+    addresses:
+      - "10.0.97.20-10.0.97.30"
+    autoAssign: true
+
+  - name: qa-vlan-pool
+    addresses:
+      - "10.0.98.20-10.0.98.30"
+    autoAssign: true
+
+  - name: prod-vlan-pool
+    addresses:
+      - "10.0.99.20-10.0.99.30"
+    autoAssign: true
+
+l2Advertisements:
+  - name: dev-vlan-advertisement
+    ipAddressPools:
+      - dev-vlan-pool
+    interfaces:
+      - bond0.677  # Dev VLAN interface
+
+  - name: qa-vlan-advertisement
+    ipAddressPools:
+      - qa-vlan-pool
+    interfaces:
+      - bond0.678  # QA VLAN interface
+```
+
+For pdx1, similar structure needed but with pdx1-specific IPs and interfaces.
+
+## DEBUGGING TIPS
+
+### Check Application Status
+```bash
+# Get application details
+kubectl --context pdx1-cluster get application noctel-api-dev -n argocd -o yaml
+
+# Check sync status
+kubectl --context pdx1-cluster describe application noctel-api-dev -n argocd
+
+# View pod status
+kubectl --context pdx1-cluster get pods -n dev
+
+# Check pod logs
+kubectl --context pdx1-cluster logs -n dev deployment/noctel-api --tail=100
+```
+
+### Test Helm Rendering
+```bash
+# Render templates locally to check for errors
+helm template noctel-api ./manifests/noctel-api \
+  -f environments/pdx1/pdx1-dev-config.yaml
+
+# Check for specific value
+helm template noctel-api ./manifests/noctel-api \
+  -f environments/pdx1/pdx1-dev-config.yaml \
+  --debug | grep -A5 "imagePullSecrets"
+```
+
+### Check Infrastructure
+```bash
+# Check if MetalLB is installed
+kubectl --context pdx1-cluster get pods -n metallb-system
+
+# Check if Cilium is working
+kubectl --context pdx1-cluster get pods -n kube-system | grep cilium
+
+# Check if ArgoCD is healthy
+kubectl --context pdx1-cluster get pods -n argocd
+```
+
+## GITOPS WORKFLOW
+
+1. **Make Changes**: Edit files in local repository
+2. **Test Rendering**: Use `helm template` to verify changes
+3. **Commit**: `git add` and `git commit` with clear message
+4. **Push**: `git push origin main`
+5. **Wait or Force Sync**: ArgoCD syncs every 3 minutes, or force via UI
+6. **Monitor**: Check ArgoCD UI for sync status and errors
+7. **Verify**: Check pods/services are running correctly
+8. **Rollback if Needed**: `git revert` and push
+
+## IMPORTANT NOTES
+
+- **Never use kubectl to modify resources directly in production** - always go through Git
+- **Test in dev first**, then qa, then prod
+- **Never commit secrets in plain text** - use Kubernetes secrets
+- **Always use specific version tags in prod**, never "latest"
+- **Infrastructure services must deploy before applications** (elasticsearch, redis, rabbitmq)
+- **Port forward dies frequently** - be prepared to restart it
+- **charts/ and manifests/ are identical** - maintain both for now
+
+## CONTACT INFORMATION
+
+- User: Finbar Day (finbar.day)
+- Local Machine: Mac (Darwin 25.2.0)
+- Working Directory: `/Users/finbar.day/Documents/BitBucket/noctel-gitops`
+- Git Branch: main
+- Remote: `git@bitbucket.org:noctel-bitbucket/noctel-gitops.git`
+
+## USEFUL LINKS
+
+- ArgoCD UI (port forwarded): https://localhost:8080
+- Bitbucket Repo: https://bitbucket.org/noctel-bitbucket/noctel-gitops
+- ArgoCD Documentation: https://argo-cd.readthedocs.io/
+- Helm Documentation: https://helm.sh/docs/
+- MetalLB Documentation: https://metallb.universe.tf/
+- Cilium Documentation: https://docs.cilium.io/
+
+## WHEN YOU START A NEW SESSION
+
+1. Read this file completely
+2. Check git status: `git status` and `git log --oneline -10`
+3. Review current cluster state: `kubectl --context pdx1-cluster get applications -n argocd`
+4. Check what tasks are pending (see "WHAT NEEDS TO BE DONE NEXT" section)
+5. Ask user for any missing information (IP ranges, interface names, etc.)
+6. Continue from where previous assistant left off
+
+## EMERGENCY CONTACTS
+
+If production is down:
+1. Check ArgoCD sync status
+2. Check pod status in affected namespace
+3. Review recent commits for potential issues
+4. Consider rollback via `git revert`
+5. As last resort, use kubectl directly (then fix in Git immediately)
+
+---
+
+Last Updated: 2026-01-14
+Last Commit: Fixed argocd redis settings (12b50ef)
+Current Branch: main
+Status: Ready for MetalLB deployment and prod config completion

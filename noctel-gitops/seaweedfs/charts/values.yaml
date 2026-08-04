@@ -1,0 +1,42 @@
+global:
+  namespace: default
+
+seaweedfs:
+  version: "3.57"
+  replicaCount: 1
+  image:
+    repository: chrislusf/seaweedfs
+    pullPolicy: IfNotPresent
+
+  # External master configuration
+  # Set externalMaster to use an external SeaweedFS cluster
+  externalMaster:
+    enabled: false
+    endpoint: "pdx-s3-master.telnoc.com:9333"  # External master VIP (10.0.91.24)
+
+  # Set to false when using external master
+  deployMaster: true
+  deployVolume: true
+  deployFiler: true
+  deployS3: true
+
+  # Cilium Egress Gateway configuration for accessing external masters on VLAN 650
+  egressGateway:
+    enabled: false      # Enable when using external master on different VLAN
+    interface: bond0.650  # VLAN 650 interface on worker nodes
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+  securityContext:
+    fsGroup: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+
+  # S3 API Access Control Configuration
+  s3:
+    configMap:
+      enabled: false
+      name: seaweedfs-s3-config

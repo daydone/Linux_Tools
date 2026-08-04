@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-worker-fma
+description: FMA (FaxBack / AudioCodes ATA) delivery worker. Consumes fma.deliver.request from noctel-api-fma, downloads TIFFs from noctel-api-storage, POSTs DeliverImage to FaxBack, and polls FaxBack httpservice.api for device online/offline status. Pairs with the thin webhook + CRUD surface in noctel-api-fma.
+type: application
+version: 0.1.0
+appVersion: "latest"

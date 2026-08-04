@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-{{ .Release.Namespace }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: traefik-{{ .Release.Namespace }}
+    app.kubernetes.io/name: traefik
+    app.kubernetes.io/instance: traefik-{{ .Release.Namespace }}
+    {{- if .Values.traefik.service.l2Pool }}
+    cilium.io/l2-pool: {{ .Values.traefik.service.l2Pool }}
+    {{- end }}
+  {{- with .Values.traefik.service.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.traefik.service.type }}
+  {{- if and (eq .Values.traefik.service.type "LoadBalancer") .Values.traefik.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.traefik.service.loadBalancerIP }}
+  {{- end }}
+  {{- if and (eq .Values.traefik.service.type "LoadBalancer") .Values.traefik.service.allocateLoadBalancerNodePorts }}
+  allocateLoadBalancerNodePorts: {{ .Values.traefik.service.allocateLoadBalancerNodePorts }}
+  {{- end }}
+  {{- if .Values.traefik.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.traefik.service.externalTrafficPolicy }}
+  {{- end }}
+  {{- if .Values.traefik.service.internalTrafficPolicy }}
+  internalTrafficPolicy: {{ .Values.traefik.service.internalTrafficPolicy }}
+  {{- end }}
+  selector:
+    app: traefik-{{ .Release.Namespace }}
+  ports:
+  {{- if index .Values.traefik.service.ports "web" }}
+  - name: web
+    port: {{ index .Values.traefik.service.ports "web" }}
+    targetPort: 80
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "websecure" }}
+  - name: websecure
+    port: {{ index .Values.traefik.service.ports "websecure" }}
+    targetPort: 443
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "metrics" }}
+  - name: metrics
+    port: {{ index .Values.traefik.service.ports "metrics" }}
+    targetPort: 9100
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "keydb-dev" }}
+  - name: keydb-dev
+    port: {{ index .Values.traefik.service.ports "keydb-dev" }}
+    targetPort: 6379
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "keydb-qa" }}
+  - name: keydb-qa
+    port: {{ index .Values.traefik.service.ports "keydb-qa" }}
+    targetPort: 6380
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "keydb-prod" }}
+  - name: keydb-prod
+    port: {{ index .Values.traefik.service.ports "keydb-prod" }}
+    targetPort: 6381
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "amqp" }}
+  - name: amqp
+    port: {{ index .Values.traefik.service.ports "amqp" }}
+    targetPort: 5672
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "smtp-relay" }}
+  - name: smtp-relay
+    port: {{ index .Values.traefik.service.ports "smtp-relay" }}
+    targetPort: 9025
+    protocol: TCP
+  {{- end }}
+  {{- if index .Values.traefik.service.ports "smtp-submit" }}
+  - name: smtp-submit
+    port: {{ index .Values.traefik.service.ports "smtp-submit" }}
+    targetPort: 9587
+    protocol: TCP
+  {{- end }}

@@ -1,0 +1,17 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-worker-geolocation:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: geolocation
+    # Region tag drives the AMQP queue suffix (worker-geolocation.pdx1)
+    # so cross-region traffic stays out of this worker's drain.
+    CHIRPSTACK_SERVER_ID: pdx1-dev

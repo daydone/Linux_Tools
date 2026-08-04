@@ -1,0 +1,22 @@
+{{- if and (dig "noctel-worker-db-backup-monitor" "metrics" "enabled" false (.Values | toJson | fromJson)) (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: db-backup-monitor
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: db-backup-monitor
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  endpoints:
+  - port: http
+    path: {{ index .Values "noctel-worker-db-backup-monitor" "metrics" "path" | default "/metrics" }}
+    interval: {{ index .Values "noctel-worker-db-backup-monitor" "metrics" "interval" | default "30s" }}
+    scrapeTimeout: {{ index .Values "noctel-worker-db-backup-monitor" "metrics" "scrapeTimeout" | default "10s" }}
+{{- end }}

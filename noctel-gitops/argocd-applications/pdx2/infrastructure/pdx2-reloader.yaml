@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pdx2-reloader
+  namespace: argocd
+  labels:
+    environment: infrastructure
+    component: reloader
+spec:
+  project: noctel-infrastructure
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: reloader
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: reloader
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

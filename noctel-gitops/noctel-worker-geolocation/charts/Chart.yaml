@@ -1,0 +1,14 @@
+apiVersion: v2
+name: noctel-worker-geolocation
+description: Multi-modal positioning worker for NocTel Now devices. Consumes device.lora.scan.* envelopes, resolves WiFi BSSIDs / BLE MACs via tiered cache (KeyDB hot, MySQL cold, Google fallback), fuses GNSS + WiFi + BLE, and publishes device.lora.position.{account} on noctel.events. Also enqueues operator-queued downlink commands to ChirpStack per device.
+type: application
+version: 7.0.0
+appVersion: "7.0.0"
+maintainers:
+  - name: NocTel
+    email: devops@noctel.com
+keywords:
+  - noctel
+  - geolocation
+  - lorawan
+  - iot

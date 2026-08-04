@@ -1,0 +1,77 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+# noctel-worker-fax consolidates the legacy noctel-api-fax-in/processor
+# and noctel-api-fax-out/worker into a single AMQP consumer. Asterisk
+# runs on bare-metal fax-N nodes; the worker discovers them via the
+# fax_fleet:* keys in KeyDB (see noctel-standards/shared/fax-fleet.js)
+# and originates calls over AMI without any in-cluster asterisk pod.
+noctel-worker-fax:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-worker-fax
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    # AMQP — outbound queue
+    - name: AMQP_EXCHANGE
+      value: "noctel.fax"
+    - name: AMQP_EXCHANGE_TYPE
+      value: "topic"
+    - name: AMQP_QUEUE_OUTBOUND
+      value: "fax.outbound"
+    - name: AMQP_DLQ_OUTBOUND
+      value: "fax.outbound.dlq"
+    - name: AMQP_ROUTING_KEY_OUTBOUND_REQUEST
+      value: "fax.send.request"
+    - name: AMQP_ROUTING_KEY_OUTBOUND_SUCCESS
+      value: "fax.send.success"
+    - name: AMQP_ROUTING_KEY_OUTBOUND_FAILURE
+      value: "fax.send.failure"
+    # AMQP — inbound queue (events emitted by bare-metal asterisk after
+    # res_fax intake; the upstream publisher lives on the fax-N node)
+    - name: AMQP_QUEUE_INBOUND
+      value: "fax.inbound"
+    - name: AMQP_DLQ_INBOUND
+      value: "fax.inbound.dlq"
+    - name: AMQP_ROUTING_KEY_INBOUND_SUCCESS
+      value: "fax.inbound"
+    - name: AMQP_ROUTING_KEY_INBOUND_FAILURE
+      value: "fax.inbound.failed"
+    - name: AMQP_PREFETCH
+      value: "10"
+    # KeyDB key prefixes
+    - name: REDIS_KEY_PREFIX_OUT
+      value: "fax:out:"
+    - name: REDIS_KEY_PREFIX_IN
+      value: "fax:in:"
+    # Worker tuning
+    - name: WORKER_CONCURRENCY
+      value: "4"
+    - name: RETRY_ATTEMPTS
+      value: "3"
+    - name: RETRY_DELAY_MS
+      value: "30000"
+    - name: FAX_TIMEOUT_MS
+      value: "600000"
+    # Health (per MICROSERVICES_PORTS.md, generic worker range 9250-9299)
+    - name: HEALTH_PORT
+      value: "9290"
+
+  metrics:
+    enabled: false
+    port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

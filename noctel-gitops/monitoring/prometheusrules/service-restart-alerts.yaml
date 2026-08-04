@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-restart-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: service.restart.rules
+    interval: 30s
+    rules:
+    - alert: PodCrashLoopingProd
+      expr: increase(kube_pod_container_status_restarts_total{namespace="prod"}[30m]) >= 3
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.pod }} crash looping in prod ({{ $value | humanize }} restarts)"
+        description: |
+          kubectl logs -n prod {{ $labels.pod }} --previous --tail=50
+          kubectl describe pod -n prod {{ $labels.pod }}
+
+    - alert: PodOOMKilledProd
+      expr: kube_pod_container_status_last_terminated_reason{namespace="prod", reason="OOMKilled"} == 1
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.pod }} OOM killed in prod"
+        description: "Container {{ $labels.container }} was OOM killed. Increase memory limit in values."
+
+    - alert: PodHighRestartRateNonProd
+      expr: increase(kube_pod_container_status_restarts_total{namespace=~"qa|dev"}[1h]) >= 10
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $labels.namespace }}/{{ $labels.pod }} high restart rate ({{ $value | humanize }}/h)"
+        description: "Not prod, but worth investigating before it becomes a prod issue."

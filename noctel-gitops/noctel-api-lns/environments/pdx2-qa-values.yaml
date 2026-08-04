@@ -1,0 +1,10 @@
+global:
+  cluster: pdx2
+  namespace: qa
+  domain:
+    prefix: pdx2-qa
+    base: telnoc.com
+
+noctel-api-lns:
+  version: "latest"
+  replicaCount: 0

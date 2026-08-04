@@ -1,0 +1,59 @@
+{{- $db := include "noctelCh.database" . -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  # Include the schema-content checksum so any change to files/*.sql
+  # spawns a new Job (Jobs are immutable; without this Argo re-syncs are no-ops).
+  name: {{ include "noctelCh.fullname" . }}-{{ .Files.Glob "files/*.sql" | toYaml | sha256sum | trunc 8 }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: noctel-clickhouse-migrations
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    argocd.argoproj.io/hook: {{ .Values.migrations.argoHook }}
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: noctel-clickhouse-migrations
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.migrations.image.pullSecret }}
+      imagePullSecrets:
+        - name: {{ . }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+          imagePullPolicy: {{ .Values.migrations.image.pullPolicy }}
+          command: ["/bin/bash", "/schema/apply.sh"]
+          env:
+            - name: CH_HOST
+              value: {{ .Values.migrations.clickhouse.host | quote }}
+            - name: CH_PORT
+              value: {{ .Values.migrations.clickhouse.tcpPort | quote }}
+            - name: CH_USER
+              value: {{ .Values.migrations.clickhouse.user | quote }}
+            - name: CH_DB
+              value: {{ $db | quote }}
+            {{- with .Values.migrations.clickhouse.passwordSecret.name }}
+            - name: CH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ . }}
+                  key: {{ $.Values.migrations.clickhouse.passwordSecret.key }}
+            {{- end }}
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+          resources:
+{{ toYaml .Values.migrations.resources | indent 12 }}
+      volumes:
+        - name: schema
+          configMap:
+            name: {{ include "noctelCh.fullname" . }}-schema
+            defaultMode: 0755

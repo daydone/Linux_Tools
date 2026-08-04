@@ -1,0 +1,103 @@
+# Default values for noctel-api-lns
+
+replicaCount: 2
+
+image:
+  repository: noctel/api-lns
+  pullPolicy: IfNotPresent
+  tag: ""  # Defaults to appVersion
+
+imagePullSecrets:
+  - name: dockerhub-secret
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9120"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Service ports
+service:
+  type: ClusterIP
+  httpPort: 7120
+  healthPort: 9120
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - noctel-api-lns
+          topologyKey: kubernetes.io/hostname
+
+# Environment configuration
+config:
+  logLevel: info
+
+# MySQL database connection
+mysql:
+  host: noctel-mysql
+  port: 3306
+  database: noctel_lns
+  # Credentials should be provided via secrets
+
+# RabbitMQ/AMQP connection
+amqp:
+  host: noctel-rabbitmq
+  port: 5672
+  vhost: /
+  # Credentials should be provided via secrets
+
+# Secrets (reference existing secrets)
+secrets:
+  jwtAccessSecret:
+    name: noctel-jwt-secrets
+    key: access-secret
+  mysqlCredentials:
+    name: noctel-mysql-secrets
+    userKey: username
+    passwordKey: password
+  amqpCredentials:
+    name: noctel-amqp-secrets
+    userKey: username
+    passwordKey: password

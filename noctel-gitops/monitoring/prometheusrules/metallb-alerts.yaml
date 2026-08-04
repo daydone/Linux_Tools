@@ -1,0 +1,45 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: metallb-alerts
+  namespace: monitoring
+spec:
+  groups:
+  - name: metallb
+    interval: 30s
+    rules:
+    - alert: MetalLBIPAllocationFailure
+      expr: increase(metallb_allocator_allocation_errors_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "MetalLB IP allocation failing"
+        description: "MetalLB cannot allocate IPs from pools. Check pool configuration matches gitops."
+
+    - alert: MetalLBServiceReconcileErrors
+      expr: increase(metallb_reconcile_errors_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "MetalLB service reconciliation errors"
+        description: "MetalLB failed to reconcile {{ $labels.service }} in {{ $labels.namespace }}"
+
+    - alert: MetalLBPoolExhausted
+      expr: (metallb_addresspool_available_ips / metallb_addresspool_total_ips) < 0.1
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "MetalLB pool {{ $labels.pool }} nearly exhausted"
+        description: "Less than 10% IPs available in pool {{ $labels.pool }}"
+
+    - alert: MetalLBControllerDown
+      expr: up{job="metallb-controller"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "MetalLB controller is down"
+        description: "LoadBalancer services will not get IPs assigned"

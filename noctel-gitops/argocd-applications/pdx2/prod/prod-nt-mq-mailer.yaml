@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nt-mq-mailer-prod
+  namespace: argocd
+  labels:
+    environment: prod
+    component: nt-mq-mailer
+spec:
+  project: noctel-prod
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: charts/nt-mq-mailer
+    helm:
+      valueFiles:
+        - ../../environments/pdx2/pdx2-prod-config.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

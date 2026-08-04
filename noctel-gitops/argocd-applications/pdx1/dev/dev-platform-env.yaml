@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pdx1-dev-platform-env
+  namespace: argocd
+  labels:
+    environment: dev
+    component: platform-env
+spec:
+  project: noctel-dev
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: platform-env/pdx1/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

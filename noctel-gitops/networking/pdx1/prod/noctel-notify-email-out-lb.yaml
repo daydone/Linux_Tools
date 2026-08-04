@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: prod-vlan-pool
+    metallb.universe.tf/allow-shared-ip: "prod-email-egress"
+  labels:
+    app: noctel-notify-email-out
+    cilium.io/l2-pool: prod-vlan
+  name: noctel-notify-email-out-egress
+  namespace: prod
+spec:
+  allocateLoadBalancerNodePorts: true
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.0.99.152
+  ports:
+  - name: egress
+    port: 25
+    protocol: TCP
+    targetPort: 25
+  selector:
+    app: noctel-notify-email-out
+  sessionAffinity: None
+  type: LoadBalancer

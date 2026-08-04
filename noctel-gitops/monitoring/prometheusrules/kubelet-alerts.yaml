@@ -1,0 +1,71 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kubelet-alerts
+  namespace: monitoring
+  labels:
+    component: kubelet
+spec:
+  groups:
+  - name: kubelet
+    interval: 30s
+    rules:
+    - alert: KubeletDown
+      expr: up{job="kubelet"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: kubelet
+      annotations:
+        summary: "Kubelet is unreachable"
+        description: "Kubelet on node {{ $labels.node }} is not responding to metrics requests"
+
+    - alert: KubeletTooManyPods
+      expr: kubelet_running_pods > 250
+      for: 15m
+      labels:
+        severity: warning
+        component: kubelet
+      annotations:
+        summary: "Node approaching pod limit"
+        description: "Node {{ $labels.node }} has {{ $value }} pods running (limit varies by node)"
+
+    - alert: KubeletPodEviction
+      expr: rate(kubelet_eviction_stats_evicted_pods_total[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        component: kubelet
+      annotations:
+        summary: "Pods being evicted from node"
+        description: "Node {{ $labels.node }} is evicting pods due to resource pressure"
+
+    - alert: KubeletImagePullError
+      expr: rate(kubelet_image_pull_duration_seconds_count{code="failure"}[5m]) > 1
+      for: 10m
+      labels:
+        severity: warning
+        component: kubelet
+      annotations:
+        summary: "High image pull failure rate"
+        description: "Node {{ $labels.node }} has {{ $value | humanize }} image pull failures per second"
+
+    - alert: KubeletNodeMemoryPressure
+      expr: kubelet_node_status_condition{condition="MemoryPressure",status="true"} == 1
+      for: 5m
+      labels:
+        severity: warning
+        component: kubelet
+      annotations:
+        summary: "Node under memory pressure"
+        description: "Node {{ $labels.node }} is reporting memory pressure"
+
+    - alert: KubeletNodeDiskPressure
+      expr: kubelet_node_status_condition{condition="DiskPressure",status="true"} == 1
+      for: 5m
+      labels:
+        severity: warning
+        component: kubelet
+      annotations:
+        summary: "Node under disk pressure"
+        description: "Node {{ $labels.node }} is reporting disk pressure"

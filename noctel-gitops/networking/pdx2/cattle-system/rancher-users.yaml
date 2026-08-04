@@ -1,0 +1,20 @@
+# Rancher admin users for pdx2
+# Note: passwords are managed by Rancher via cattle-local-user-passwords Secrets.
+# After applying, set passwords by patching the users (triggers Rancher to create/update Secrets):
+#   kubectl --context pdx2-cluster patch user user-fb5qq     --type=merge -p '{"password":"<plaintext>"}'
+#   kubectl --context pdx2-cluster patch user user-finbarday  --type=merge -p '{"password":"<plaintext>"}'
+#   kubectl --context pdx2-cluster patch user user-corys      --type=merge -p '{"password":"<plaintext>"}'
+---
+apiVersion: management.cattle.io/v3
+kind: GlobalRoleBinding
+metadata:
+  name: grb-user-corys-admin
+globalRoleName: admin
+userName: user-corys
+---
+apiVersion: management.cattle.io/v3
+kind: GlobalRoleBinding
+metadata:
+  name: grb-user-finbarday-admin
+globalRoleName: admin
+userName: user-finbarday

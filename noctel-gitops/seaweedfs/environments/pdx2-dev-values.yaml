@@ -1,0 +1,21 @@
+seaweedfs:
+    version: "3.57"
+    replicaCount: 0
+    image:
+      repository: chrislusf/seaweedfs
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      enabled: true
+      size: 50Gi
+      storageClass: longhorn
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000

@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack-pdx1
+  namespace: argocd
+  labels:
+    cluster: pdx1
+    component: monitoring
+spec:
+  project: default
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: manifests/kube-prometheus-stack
+    helm:
+      valueFiles:
+        - ../../environments/pdx1/pdx1-monitoring-config.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  ignoreDifferences:
+  - group: v1
+    kind: PersistentVolumeClaim
+    jsonPointers:
+    - /spec/volumeName
+  - group: monitoring.coreos.com
+    kind: ServiceMonitor
+    jsonPointers:
+    - /spec/attachMetadata
+    - /spec/endpoints
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - SkipHooks=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

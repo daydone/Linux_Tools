@@ -1,0 +1,124 @@
+{{- if .Values.keydb.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keydb-config
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: keydb
+data:
+  keydb.conf: |
+    # KeyDB configuration
+    protected-mode no
+    tcp-backlog 511
+    timeout 0
+    tcp-keepalive 300
+    daemonize no
+    supervised no
+    loglevel notice
+    databases 16
+
+    # Cap the dataset and evict under pressure. Without maxmemory KeyDB
+    # grows unbounded until the kernel OOM-kills the pod. 4096mb sits at
+    # ~78% of the 5.2Gi pod limit, leaving headroom for the fork copy-on-write
+    # spike during AOF rewrites (~100MB observed in the qa log).
+    #
+    # MUST be volatile-lru, NOT allkeys-lru: KeyDB holds persistent no-TTL
+    # live-state keys (presence, api-services status, HA1 routing, counts)
+    # alongside TTL'd cache/metrics. allkeys-lru evicts ANY key under
+    # pressure — including that live state — which silently breaks desk
+    # propagation and, on active-active, replicates the DELs to peers.
+    # volatile-lru only evicts keys that carry a TTL, so the bulk metrics
+    # churn while the persistent state is never touched. (qa incident
+    # 2026-06-09: allkeys-lru at 86% mem evicted 391k keys incl. live state.)
+    maxmemory             6144mb
+    maxmemory-policy      volatile-lru
+    maxmemory-samples     10
+
+    # BGSAVE disabled. KeyDB has a bug in the RDB fork process that causes
+    # assertion failures during background saves (rdb.cpp:1372). Since AOF is
+    # enabled and provides reliable persistence, RDB snapshots are unnecessary.
+    # Disabling BGSAVE prevents the crashes and fork overhead.
+    save ""
+    stop-writes-on-bgsave-error no
+    rdbcompression yes
+    rdbchecksum yes
+    dbfilename dump.rdb
+    replica-serve-stale-data yes
+    replica-read-only no
+    repl-diskless-sync yes
+    repl-diskless-sync-delay 0
+    repl-disable-tcp-nodelay yes
+    repl-timeout 300
+    replica-priority 100
+    lazyfree-lazy-eviction no
+    lazyfree-lazy-expire no
+    lazyfree-lazy-server-del no
+    replica-lazy-flush no
+    appendfilename "appendonly.aof"
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    # Was 64mb, which under qa write load triggered a rewrite every
+    # few minutes — each rewrite forks a child and accumulates COW
+    # pages. Raised to 512mb so rewrites happen on a more relaxed
+    # cadence (typically every couple of hours under steady churn).
+    auto-aof-rewrite-min-size 512mb
+    aof-load-truncated yes
+    aof-use-rdb-preamble yes
+
+    # Replication backlog — sized to ~1 hour of writes, not maximal.
+    # Measured write rate is ~33 KB/s now (~116 MB/hr) and ~2-3x that at
+    # 20k phones (~250-350 MB/hr), so 512mb covers a full hour at scale.
+    # A replica disconnected longer than the backlog holds does a full
+    # resync from scratch — which is the intended policy: beyond ~1 hour a
+    # partial resync isn't worth the RAM (a ~400 MB dataset full-syncs fast).
+    #
+    # TRADEOFF (was 1gb): the old 1gb buffer was deliberately oversized to
+    # AVOID full resyncs, because a full resync forks an RDB dump that can
+    # hit the rdb.cpp:1372 assertion / long-uptime pthread_cancel fork
+    # SIGSEGV (see project_keydb_pthread_cancel_fork_crash). At 512mb full
+    # resyncs only happen on a >~1.5h disconnect (rare in a healthy 3-node
+    # mesh), but if they prove flaky, enable diskless replication
+    # (repl-diskless-sync) or restart the lagging node rather than re-growing
+    # this back to 1gb — the 1gb buffer was eating 70% of maxmemory and
+    # forcing dataset eviction (qa/prod incident 2026-06-09).
+    repl-backlog-size     512mb
+    repl-backlog-ttl      3600
+
+    # Active defrag. High write churn with TTL'd keys fragments
+    # jemalloc's heap; without defrag, RSS drifts upward across
+    # restart-free weeks until it bumps the maxmemory ceiling.
+    activedefrag                  yes
+    active-defrag-threshold-lower 10
+    active-defrag-threshold-upper 100
+    active-defrag-cycle-min       5
+    active-defrag-cycle-max       25
+    active-defrag-ignore-bytes    100mb
+    lua-time-limit 5000
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+    latency-monitor-threshold 0
+    notify-keyspace-events ""
+    hash-max-ziplist-entries 512
+    hash-max-ziplist-value 64
+    list-max-ziplist-size -2
+    list-compress-depth 0
+    set-max-intset-entries 512
+    zset-max-ziplist-entries 128
+    zset-max-ziplist-value 64
+    hll-sparse-max-bytes 3000
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+    activerehashing yes
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+    # DISABLED: KeyDB 6.3.3 crashes in activeExpireCycleCore during expiration
+    # hz controls how often the expiration cycle runs (10 = 100ms intervals)
+    # Setting to 0 disables automatic key expiration to prevent crashes
+    hz 0
+    dynamic-hz no
+    aof-rewrite-incremental-fsync yes
+    rdb-save-incremental-fsync yes
+{{- end }}

@@ -1,0 +1,18 @@
+global:
+  namespace: dev
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-worker-db-backup-monitor:
+  enabled: true
+  # Dev typically won't have the agent running — alerts here are noise.
+  # Keep the deployment around for image testing; thresholds get
+  # extended to "very generous" so we don't post fake alerts.
+  extraEnv:
+    - name: DB_BACKUP_FULL_MAX_AGE_SECONDS
+      value: "604800"    # 1 week — dev backups not required
+    - name: DB_BACKUP_INCR_MAX_AGE_SECONDS
+      value: "604800"
+    - name: DB_BACKUP_BINLOG_MAX_AGE_SECONDS
+      value: "604800"

@@ -1,0 +1,472 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-account
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-account
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-account
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-actions
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-actions
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-actions
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-billing
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-billing
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-billing
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-cache-sync
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-cache-sync
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-cache-sync
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-cnam
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-cnam
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-cnam
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-devices
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-devices
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-devices
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-dex
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-dex
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-dex
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-flow
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-flow
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-flow
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-gateway
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-gateway
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-gateway
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-mailbox
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-mailbox
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-mailbox
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-messaging
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-messaging
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-messaging
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-monitor
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-monitor
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-monitor
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-notify
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    app: noctel-api-notify
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-notify
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-fma
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-fma
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-numbers
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-numbers
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-porting
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-porting
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-realtime
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-realtime
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-storage
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-storage
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-super
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-super
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-talk
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-talk
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-trace
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-trace
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-wireguard
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-wireguard
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-api-workflow
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-api-workflow
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

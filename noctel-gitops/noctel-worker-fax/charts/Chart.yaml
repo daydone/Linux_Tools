@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-worker-fax
+description: Noctel Fax Worker — combined inbound processor + outbound sender. Talks to bare-metal fax-N asterisk nodes via AMI; no asterisk in K3S.
+type: application
+version: 0.1.0
+appVersion: "latest"

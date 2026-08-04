@@ -1,0 +1,15 @@
+global:
+  cluster: ""
+  namespace: ""
+  domain:
+    prefix: ""
+    base: ""
+
+noctel-notify-websocket-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env: {}
+  secrets: {}
+  resources: {}

@@ -1,0 +1,21 @@
+{{- if index .Values "seaweedfs" "deployVolume" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-volume
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-volume
+    component: volume
+spec:
+  clusterIP: None
+  ports:
+  - name: volume
+    port: 8080
+    targetPort: 8080
+  - name: grpc
+    port: 18080
+    targetPort: 18080
+  selector:
+    app: {{ .Chart.Name }}-volume
+{{- end }}

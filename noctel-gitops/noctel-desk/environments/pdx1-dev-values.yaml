@@ -1,0 +1,36 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-desk:
+  version: "7.0.1672"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  env:
+    NODE_ENV: "development"
+    API_URL: "https://pdx1-dev-api-gateway.telnoc.com"
+    WS_URL: "wss://pdx1-dev-api-gateway.telnoc.com/ws"
+    PROVISIONING_URL: "https://p.telnoc.com"
+    # Mock mode is intentionally OFF in every k3s deployment, even
+    # dev. Designers who want the offline mock shell run `ng serve`
+    # locally — that path bypasses this configmap and falls through
+    # to the localhost branch in resolveAllowMockMode().
+    ALLOW_MOCK_MODE: "false"
+  ingress:
+    enabled: true
+    ingressClassName: traefik-dev
+    host: pdx1-dev-desk.telnoc.com

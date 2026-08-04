@@ -1,0 +1,44 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: noctel-api-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+    component: noctel-api
+spec:
+  groups:
+  - name: noctel.api.rules
+    interval: 30s
+    rules:
+    - alert: NoctelApiCompletelyDownProd
+      expr: |
+        kube_deployment_status_replicas_available{namespace="prod", deployment=~"noctel-api-.*"} == 0
+        and
+        kube_deployment_spec_replicas{namespace="prod", deployment=~"noctel-api-.*"} > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "{{ $labels.deployment }} completely down in prod"
+        description: |
+          Deployment {{ $labels.deployment }} has 0 available replicas while {{ $value }} are desired.
+          Service is completely unavailable.
+          kubectl rollout status -n prod deploy/{{ $labels.deployment }}
+          kubectl describe deploy -n prod {{ $labels.deployment }}
+          kubectl logs -n prod -l app.kubernetes.io/name={{ $labels.deployment }} --tail=50
+
+    - alert: NoctelWorkerCompletelyDownProd
+      expr: |
+        kube_deployment_status_replicas_available{namespace="prod", deployment=~"noctel-worker-.*|noctel-notify-.*"} == 0
+        and
+        kube_deployment_spec_replicas{namespace="prod", deployment=~"noctel-worker-.*|noctel-notify-.*"} > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "{{ $labels.deployment }} completely down in prod"
+        description: |
+          Worker/Notify service {{ $labels.deployment }} has 0 available replicas.
+          This service may be processing background jobs or async tasks.
+          kubectl rollout status -n prod deploy/{{ $labels.deployment }}

@@ -1,0 +1,27 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: dev-egress-to-external
+spec:
+  # Select all pods in dev namespace
+  selectors:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: dev
+
+  # Route all external traffic through the dev VLAN gateway
+  destinationCIDRs:
+  - "0.0.0.0/0"
+
+  # Don't SNAT internal cluster traffic
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "10.42.0.0/16"
+  - "10.43.0.0/16"
+
+  # Route through dev VLAN gateway (10.0.97.0/24)
+  egressGateway:
+    egressIP: "10.0.97.10"
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"

@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Patch the K3s-managed CoreDNS deployment to fix SPOF
+# Scales from 1 to 2 replicas with pod anti-affinity for HA
+#
+# K3s manages CoreDNS as an addon, but we override it here to ensure
+# high availability and prevent single point of failure in DNS
+
+namespace: kube-system
+
+patches:
+  - path: coredns-patch.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: coredns

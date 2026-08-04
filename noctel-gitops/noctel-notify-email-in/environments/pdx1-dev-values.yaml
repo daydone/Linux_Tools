@@ -1,0 +1,22 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-notify-email-in:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9400"
+    HTTP_PORT: "7400"
+    SMTP_PORT_RELAY: "9025"
+    SMTP_PORT_SUBMISSION: "9587"
+    SMTP_MAX_SIZE: "10485760"
+    SERVICE_NAME: noctel-notify-email-in
+    BOUNCE_DOMAIN: bounces.noctel.com
+  secrets:
+    # TODO: add POSTAL_WEBHOOK_SECRET

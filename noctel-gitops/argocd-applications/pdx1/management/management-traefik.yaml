@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik-management
+  namespace: argocd
+  labels:
+    environment: management
+    component: traefik
+spec:
+  project: default
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: traefik/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx1-management-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: management
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

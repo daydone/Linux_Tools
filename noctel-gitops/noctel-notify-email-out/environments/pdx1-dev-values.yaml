@@ -1,0 +1,28 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-notify-email-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9201"
+    # The email-out container ships an in-pod postfix sidecar; service
+    # code refuses to boot without SMTP_HOST so a misconfigured
+    # deployment fails loud instead of silently bouncing to localhost.
+    SMTP_HOST: "127.0.0.1"
+    # POSTAL_API_URL / POSTAL_SERVER_KEY removed — we deliver via the
+    # in-pod Postfix sidecar (SMTP_HOST=127.0.0.1 above), not via the
+    # Postal HTTP API. The placeholder POSTAL_SERVER_KEY also leaked
+    # the literal string "placeholder-set-in-secret" into the pod env
+    # via the platform configmap, which was confusing.
+    SMTP_FROM: "notifications@noctel.com"
+    SMTP_FROM_NAME: "NocTel Notifications"
+    SMTP_BOUNCE_DOMAIN: "bounces.noctel.com"
+    SERVICE_NAME: noctel-notify-email-out
+  secrets:

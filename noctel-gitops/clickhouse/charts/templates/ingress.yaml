@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pdx1-clickhouse-ingress
+  namespace: clickhouse
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik-management
+  rules:
+    - host: pdx1-clickhouse.telnoc.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-clickstack-clickhouse
+                port:
+                  number: 8123
+  tls:
+    - hosts:
+        - pdx1-clickhouse.telnoc.com
+      secretName: pdx1-clickhouse-tls

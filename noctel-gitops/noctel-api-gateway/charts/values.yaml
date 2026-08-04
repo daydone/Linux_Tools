@@ -1,0 +1,25 @@
+global:
+  namespace: default
+
+ingressRoute:
+  enabled: false
+  host: ""
+
+traefik:
+  tlsForwarding:
+    enabled: false
+
+tls:
+  enabled: false
+  host: ""
+
+noctel-api-gateway:
+  replicaCount: 1
+  version: "latest"
+  image:
+    pullPolicy: IfNotPresent
+  securityContext:
+    fsGroup: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001

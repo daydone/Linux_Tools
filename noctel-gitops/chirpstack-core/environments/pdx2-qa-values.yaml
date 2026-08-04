@@ -1,0 +1,18 @@
+  # Image and scaling
+  image: "chirpstack/chirpstack:4.7.0"
+  replicas: 0
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+  # Environment-specific connections
+  postgresql:
+    dsn: "postgres://chirpstack_qa:XFA2*Kzu794qop9w@10.0.96.21:5432/chirpstack_qa?sslmode=disable"
+  redis:
+    servers: ["redis://redis-qa-master.qa.svc.cluster.local:6379"]
+  mqtt:
+    server: "tcp://ha-rabbit.qa.svc.cluster.local:1883"

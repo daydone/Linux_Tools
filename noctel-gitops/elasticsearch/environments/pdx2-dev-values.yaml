@@ -1,0 +1,19 @@
+elasticsearch:
+    version: "8.8.0"
+    replicaCount: 0
+    volumeClaimTemplate:
+      resources:
+        requests:
+          storage: 30Gi
+      storageClassName: longhorn
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000

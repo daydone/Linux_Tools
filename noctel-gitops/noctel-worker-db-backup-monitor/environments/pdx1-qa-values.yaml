@@ -1,0 +1,15 @@
+global:
+  namespace: qa
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-worker-db-backup-monitor:
+  enabled: true
+  extraEnv:
+    - name: DB_BACKUP_FULL_MAX_AGE_SECONDS
+      value: "604800"
+    - name: DB_BACKUP_INCR_MAX_AGE_SECONDS
+      value: "604800"
+    - name: DB_BACKUP_BINLOG_MAX_AGE_SECONDS
+      value: "604800"

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: reloader
+description: |
+  Stakater Reloader — watches ConfigMap and Secret changes and triggers
+  rolling restarts on Deployments that opt in via the
+  `reloader.stakater.com/auto: "true"` annotation. Eliminates the
+  manual `kubectl rollout restart` after every platform-env edit.
+type: application
+version: 1.0.0
+dependencies:
+  - name: reloader
+    version: "2.2.11"
+    repository: https://stakater.github.io/stakater-charts

@@ -1,0 +1,44 @@
+global:
+  cluster: pdx1
+  namespace: dev
+
+# noctel_trace_<namespace> is the target database (matches
+# clickhouse-sink.js: DB = CLICKHOUSE_DATABASE || `noctel_trace_${NAMESPACE}`).
+# Override per env via environments/<cluster>-<env>-values.yaml.
+migrations:
+  # Target database. If empty, derived as noctel_trace_<global.namespace>.
+  database: ""
+
+  # ClickHouse HTTP endpoint reachable from the env namespace.
+  # The ClickStack release lives in the `clickhouse` namespace; the
+  # default service name pattern is `<release>-clickstack-clickhouse`.
+  clickhouse:
+    host: clickhouse-clickstack-clickhouse.clickhouse.svc.cluster.local
+    httpPort: 8123
+    tcpPort: 9000
+    user: default
+    # Password pulled from an existing Secret in the env namespace
+    # (key default: CLICKHOUSE_DEFAULT_PASSWORD). Leave empty for
+    # passwordless dev clusters.
+    passwordSecret:
+      name: ""
+      key: CLICKHOUSE_DEFAULT_PASSWORD
+
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/clickhouse/clickhouse-server
+    tag: "24.4.1"
+    pullPolicy: IfNotPresent
+    pullSecret: harbor-pull
+
+  # Argo PreSync runs before regular resources so api-trace + indexer
+  # come up against an already-migrated schema. Set to `post-install,post-upgrade`
+  # (Helm hooks) if you want plain `helm install` semantics instead.
+  argoHook: PreSync
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

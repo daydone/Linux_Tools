@@ -1,0 +1,36 @@
+---
+# Per-node Cilium override for the K3S control-plane nodes (kservers).
+#
+# Background. The default cilium-config ConfigMap sets
+# `devices: bond0.678`. That matches the kworkers (we override it
+# explicitly in worker-node-config.yaml to include all five bonded
+# VLANs) but does NOT exist on the control-plane nodes, which are
+# multi-NIC ESXi VMs with ens161/192/224/256 carrying the dev/mgmt/
+# qa/prod VLANs.
+#
+# The Cilium auto-detection is racy — it succeeded on kserver0/1/4
+# but failed on kserver2/3, leaving those agents in CrashLoopBackOff
+# with "unable to determine direct routing device".
+#
+# This CiliumNodeConfig pins the correct device list and direct
+# routing device for all control-plane nodes, matching what the
+# working kservers auto-detected.
+#
+# Mapping (from nmcli on the nodes):
+#   ens161 = vlan677
+#   ens192 = vlan675 (mgmt VLAN, carries the default route)
+#   ens224 = vlan678
+#   ens256 = vlan679
+
+apiVersion: cilium.io/v2
+kind: CiliumNodeConfig
+metadata:
+  namespace: kube-system
+  name: pdx1-server-config
+spec:
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/control-plane: "true"
+  defaults:
+    devices: "ens161 ens192 ens224 ens256"
+    direct-routing-device: "ens192"

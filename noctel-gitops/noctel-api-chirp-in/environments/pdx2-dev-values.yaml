@@ -1,0 +1,12 @@
+global:
+  cluster: pdx2
+  namespace: dev
+  domain:
+    prefix: pdx2-dev
+    base: telnoc.com
+
+noctel-api-chirp-in:
+  version: "latest"
+  replicaCount: 0
+  env:
+    CHIRPSTACK_REGION: pdx2

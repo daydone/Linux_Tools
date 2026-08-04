@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-worker-carriers
+description: Unified carrier/provider worker. Consumes the noctel.carriers job exchange (carriers.lookup.request, carriers.order.request) and runs the slow provider calls off the API request path — Number Lookup intelligence (Telnyx today; portability + CSR pull recognized) writes results to Elasticsearch with attachments via noctel-api-storage; number ordering/purchasing writes back into phone_number inventory. Adapter wiring lives in the numbers capability service; this worker is the async orchestrator.
+type: application
+version: 0.1.0
+appVersion: "latest"

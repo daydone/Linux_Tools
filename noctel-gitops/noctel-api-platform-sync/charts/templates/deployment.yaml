@@ -1,0 +1,75 @@
+{{- if index .Values "noctel-api-platform-sync" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: platform-sync-api
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: {{ index .Values "noctel-api-platform-sync" "replicaCount" }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: platform-sync-api
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: platform-sync-api
+        app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+        app.kubernetes.io/name: noctel
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      containers:
+      - name: api
+        image: "{{ index .Values "noctel-api-platform-sync" "image" "repository" }}:{{ index .Values "noctel-api-platform-sync" "image" "tag" }}"
+        imagePullPolicy: {{ index .Values "noctel-api-platform-sync" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 7273
+          name: http
+          protocol: TCP
+        - containerPort: 9273
+          name: health
+          protocol: TCP
+        # AMQP_URL + SERVICE_STORAGE_URL + SERVICE_SECRET come from
+        # the shared secret + configmap. PLATFORM_SYNC_ENV is per-env.
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- with index .Values "noctel-api-platform-sync" "env" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with index .Values "noctel-api-platform-sync" "extraEnv" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-api-platform-sync" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      enableServiceLinks: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
+{{- end }}

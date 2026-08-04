@@ -1,0 +1,30 @@
+{{- /*
+  PodDisruptionBudget for the Elasticsearch cluster. Only rendered when
+  replicaCount > 1 — a single-node cluster has no quorum to protect, and
+  a PDB minAvailable=1 against count=1 would block every voluntary
+  eviction (node drain, kubelet restart, ECK upgrade) which is worse
+  than no PDB at all.
+
+  minAvailable is replicaCount - 1 so cluster ops can take exactly one
+  node down at a time. With count=3, that means minAvailable=2 — quorum
+  is preserved during drains, rolling upgrades, etc. ECK's own rolling
+  upgrade machinery respects PDBs.
+
+  ECK 2.x also auto-creates a default PDB if you don't supply one, but
+  that default applies cluster-wide and assumes named nodeSets — we
+  override here so the wording stays explicit and the math matches our
+  actual layout.
+*/}}
+{{- $count := int (index .Values "elasticsearch" "replicaCount") -}}
+{{- if gt $count 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Chart.Name }}-es-default
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  minAvailable: {{ sub $count 1 }}
+  selector:
+    matchLabels:
+      elasticsearch.k8s.elastic.co/cluster-name: {{ .Chart.Name }}
+{{- end }}

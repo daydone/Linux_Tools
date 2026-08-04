@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9025
+    targetPort: smtp-relay
+    protocol: TCP
+    name: smtp-relay
+  - port: 9587
+    targetPort: smtp-submit
+    protocol: TCP
+    name: smtp-submit
+  - port: 7400
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9400
+    targetPort: health
+    protocol: TCP
+    name: health
+  selector:
+    app: {{ .Chart.Name }}

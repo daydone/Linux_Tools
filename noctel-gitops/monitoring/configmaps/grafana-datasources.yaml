@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-custom-datasources
+  namespace: monitoring
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: prometheus
+        url: http://kube-prometheus-stack-pdx1-prometheus.monitoring.svc.cluster.local:9090
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+      - name: Loki
+        type: loki
+        uid: loki
+        url: http://loki-pdx1-grafana-loki-gateway.monitoring.svc.cluster.local:80
+        access: proxy
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        url: http://tempo-pdx1-grafana-tempo-query-frontend.monitoring.svc.cluster.local:3100
+        access: proxy

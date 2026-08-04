@@ -1,0 +1,32 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-monitor:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7260"
+    HEALTH_PORT: "9260"
+    SERVICE_NAME: monitor
+    CACHE_FILL_ENABLED: "true"
+    MONITOR_INTERVAL_SECONDS: "30"
+    MONITOR_STATE_TTL_SECONDS: "120"
+    MONITOR_RUN_ON_START: "true"
+    # PROBE_KEYDB_URLS / PROBE_RABBITMQ_URLS / PROBE_ELASTICSEARCH_URLS
+    # all intentionally unset — registry.js uses envListWithFallback
+    # against REDIS_URL / AMQP_URL / ELASTICSEARCH_URL respectively,
+    # all sourced from noctel-api-secrets via envFrom (with the
+    # passwords baked in). Setting these explicitly here would
+    # shadow the auth'd URLs and revert each probe to anonymous,
+    # which 401s now that ES/Rabbit/KeyDB all require credentials.
+    PROBE_MYSQL_URLS: "mysql://prod-ddb.noctel.com:3306"
+    PROBE_KAMAILIO_HTTP_URLS: "http://kamailio.prod.svc.cluster.local:8080/RPC"
+    PROBE_ASTERISK_ARI_URLS: "http://asterisk.prod.svc.cluster.local:8088"
+    PROBE_STORAGE_HEALTH_URL: "http://noctel-api-storage.prod.svc.cluster.local:7170/storage/probe-health"
+  secrets:

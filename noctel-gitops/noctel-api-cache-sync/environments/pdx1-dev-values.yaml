@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-cache-sync:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    ACCOUNT_SERVICE_URL: "http://noctel-api-account.dev.svc.cluster.local:7110"
+    SERVICE_NAME: cache-sync
+  secrets:

@@ -1,0 +1,19 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-worker-chirp-out:
+  # 7.0.28 was the last build under the OLD name (noctel-api-chirp-out);
+  # Harbor only has noctel-worker-chirp-out images from 7.0.38 onward
+  # (post-rename). Bumped to match dev so qa actually pulls.
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: chirp-out
+    CHIRPSTACK_REGION: pdx1
+  secrets:

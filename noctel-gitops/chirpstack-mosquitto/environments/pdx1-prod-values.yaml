@@ -1,0 +1,29 @@
+global:
+  namespace: prod
+
+chirpstack-mosquitto:
+    version: "2.0.18"      # Match pdx2 working version
+    # Mosquitto OSS does not cluster. Running >1 replica behind a
+    # single Service silently fragments MQTT traffic: each gateway-
+    # bridge and each chirpstack-core pod connects to one random
+    # backing pod, so a uplink published to pod A is only visible
+    # to subscribers also on pod A. Manifested 2026-05-17 as B4
+    # JoinRequests dropping (bridge published, no core saw it).
+    # Stats events leak through statistically because they fire
+    # every 30s per gateway; one-shot joins lose the lottery.
+    # If real HA is needed, swap to EMQX/HiveMQ/VerneMQ which
+    # actually cluster. For NocTel scale (low msg rate, ~hundreds
+    # of gateways), one pod is fine and matches the upstream
+    # chirpstack chart default.
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi

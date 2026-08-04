@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rabbitmq-qa
+  namespace: argocd
+  labels:
+    environment: qa
+    component: rabbitmq
+spec:
+  project: noctel-qa
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: manifests/rabbitmq
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: qa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

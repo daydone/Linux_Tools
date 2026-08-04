@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb-pdx1
+  namespace: argocd
+  labels:
+    cluster: pdx1
+    component: metallb
+    type: infrastructure
+spec:
+  project: default
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: manifests/metallb
+    helm:
+      valueFiles:
+        - ../../environments/pdx1/pdx1-metallb-config.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metallb-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle

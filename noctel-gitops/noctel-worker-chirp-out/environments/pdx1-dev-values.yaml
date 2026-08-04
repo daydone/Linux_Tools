@@ -1,0 +1,19 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-worker-chirp-out:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: chirp-out
+    # Cluster-bound region tag — chirp-out reconciles only devices
+    # whose home_region matches. Set per cluster (pdx1 / pdx2). See
+    # noctel-worker-chirp-out/src/reconcile.js.
+    CHIRPSTACK_REGION: pdx1
+  secrets:

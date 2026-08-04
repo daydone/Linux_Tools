@@ -1,0 +1,40 @@
+global:
+  namespace: prod
+
+elasticsearch:
+    version: "8.15.5"
+    enabled: true
+    replicaCount: 3
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    security:
+      enabled: true
+    http:
+      tls:
+        disabled: true
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    volumeClaimTemplate:
+      resources:
+        requests:
+          storage: 30Gi
+    nodeSets:
+      - name: "default"
+        count: 3
+        resources:
+          requests:
+            cpu: 500m
+            memory: 4Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        storage:
+          size: "30Gi"
+          storageClass: "longhorn"
+        config:
+          node.store.allow_mmap: false

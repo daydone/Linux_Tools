@@ -1,0 +1,31 @@
+{{- if and .Values.rabbitmq.externalLoadBalancerIP }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: ha-rabbit-external
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: rabbitmq
+    component: external-loadbalancer
+  annotations:
+    metallb.universe.tf/address-pool: {{ .Values.rabbitmq.metalLBPool | default "qa-vlan-pool" }}
+spec:
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.rabbitmq.externalLoadBalancerIP }}
+  ports:
+  - port: 5672
+    targetPort: 5672
+    protocol: TCP
+    name: amqp
+  - port: 15672
+    targetPort: 15672
+    protocol: TCP
+    name: management
+  - port: 15692
+    targetPort: 15692
+    protocol: TCP
+    name: prometheus
+  selector:
+    app.kubernetes.io/name: ha-rabbit
+  sessionAffinity: None
+{{- end }}

@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-s3
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-s3
+    component: s3
+spec:
+  type: ClusterIP
+  ports:
+  - name: s3
+    port: 8333
+    targetPort: 8333
+  selector:
+    app: {{ .Chart.Name }}-s3

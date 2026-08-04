@@ -1,0 +1,576 @@
+# ENVIRONMENT TEMPLATE - VALUES CONFIGURATION
+# Template for creating new environment configurations
+# Copy this file and customize for each environment (dev, qa, prod)
+
+# Global Settings
+global:
+  cluster: pdx2
+  namespace: # REQUIRED: Environment namespace (dev, qa, prod)
+  domain:
+    prefix: # REQUIRED: Domain prefix (pdx2-dev, pdx2-qa, pdx2-prod)
+    base: telnoc.com
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  dockerRegistry:
+    server: "index.docker.io/v1/"
+    username: "noctel"
+    password: # REQUIRED: Docker registry password
+
+# Noctel Components
+noctel-api:
+  version: # REQUIRED: API version tag
+  replicaCount: 2
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    LOG_LEVEL: info
+    PORT: "3000"
+    DEBUG: "false"
+    CORS_ORIGIN: # REQUIRED: Comma-separated allowed origins
+    # Database configuration
+    DB_HOST: # REQUIRED: Database host
+    DB_PORT: "3306"
+    DB_NAME: # REQUIRED: Database name
+    DB_USER: # REQUIRED: Database user
+    DB_PASSWORD: # REQUIRED: Database password
+    DB_CONNECTION_LIMIT: "150"
+    DB_DEBUG: "false"
+    # Redis configuration
+    REDIS_HOST: # REQUIRED: Redis connection string
+    # RabbitMQ configuration
+    RABBITMQ_HOST: # REQUIRED: RabbitMQ host
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USERNAME: # REQUIRED: RabbitMQ username
+    RABBITMQ_PASSWORD: # REQUIRED: RabbitMQ password
+    RABBITMQ_CHIRP_IN: # REQUIRED: ChirpStack queue name
+    RABBITMQ_MAIL_QUEUE: mail-out
+    # Elasticsearch configuration
+    ELASTICSEARCH_HOST: # REQUIRED: Elasticsearch URL
+    ELASTICSEARCH_USERNAME: elastic
+    ELASTICSEARCH_PASSWORD: # REQUIRED: Elasticsearch password
+    # ChirpStack configuration
+    # NOTE: CHIRPSTACK_TENANT_ID / CHIRPSTACK_APPLICATION_ID removed
+    # 2026-05-16 (task #86). Those were per-region values being shipped
+    # as global env. The chirp workers now read CHIRPSTACK_REGION from
+    # their per-deployment values file and look up the region-specific
+    # tenant/application from ChirpStack at startup.
+    CHIRPSTACK_API_KEY: # REQUIRED: ChirpStack API key
+    CHIRPSTACK_URL: # REQUIRED: ChirpStack core URL
+    CHIRPSTACK_EVENT_URL: # REQUIRED: ChirpStack event URL
+    CHIRPSTACK_SERVER_ID: # REQUIRED: Environment identifier
+    # JWT configuration
+    JWT_SECRET: # REQUIRED: JWT secret
+    JWT_ACCESS_SECRET: # REQUIRED: JWT access secret
+    JWT_REFRESH_SECRET: # REQUIRED: JWT refresh secret
+    JWT_ACCESS_EXPIRATION_TIME: 1h
+    JWT_REFRESH_EXPIRATION_TIME: 7d
+    # Public URLs
+    PUB_NTAPI_URL: # REQUIRED: Public API URL
+    PUB_PORTAL_URL: # REQUIRED: Public portal URL
+    # Passkey configuration
+    PASSKEY_ORIGIN: # REQUIRED: Passkey origin URL
+    PASSKEY_RP_ID: # REQUIRED: Passkey relying party ID
+    # API keys
+    GOOGLE_GEOLOCATION_API_KEY: # REQUIRED: Google API key
+    RECAPTCHA_SECRET_KEY: # REQUIRED: reCAPTCHA secret
+    RECAPTCHA_FAIL_OPEN: "FALSE"
+    RECAPTCHA_SCORE_THRESHOLD: "0.6"
+    SIGNUP_ALLOWED_COUNTRIES: "US,CA,MX"
+    # Session and security
+    SESSION_SECRET: # REQUIRED: Session secret
+    DEVICE_KEY_ENCRYPTION: # REQUIRED: Device encryption key
+    STORAGE_KEY_1: # REQUIRED: Storage encryption key
+    # Mail configuration
+    MAIL_FROM: # REQUIRED: From email address
+    # Media configuration
+    MEDIA: "/media"
+    MEDIA_PATH: "/media"
+    # LNS configuration
+    LNS_APPKEY: # REQUIRED: LNS application key
+
+noctel-ui:
+  version: # REQUIRED: UI version tag
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    fsGroup: 1001
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - noctel
+          topologyKey: kubernetes.io/hostname
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  minReadySeconds: 10
+  probes:
+    readiness:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+    liveness:
+      httpGet:
+        path: /
+        port: http
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    PORT: "8080"
+    LOG_LEVEL: info
+    LANGUAGES: "en,es"
+    MAX_RETRIES: "5"
+    PRODUCTION: # REQUIRED: "true" or "false"
+    NTAPI_URL: # REQUIRED: Internal API URL
+    PUB_NTAPI_URL: # REQUIRED: Public API URL
+    PUB_PORTAL_URL: # REQUIRED: Public portal URL
+    PUB_WS_URL: # REQUIRED: WebSocket URL
+    PUB_DISPLAY_URL: # REQUIRED: Public display URL
+    RECAPTCHA_SITE_KEY: # REQUIRED: reCAPTCHA site key
+    TIMEOUT: "45000"
+
+noctel-display:
+  version: # REQUIRED: Display version tag
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    fsGroup: 1001
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - noctel
+          topologyKey: kubernetes.io/hostname
+  probes:
+    readiness:
+      httpGet:
+        path: /ping
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
+    liveness:
+      httpGet:
+        path: /ping
+        port: http
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+  volumes:
+    - name: logs
+      emptyDir: {}
+  volumeMounts:
+    - name: logs
+      mountPath: /app/logs
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    PORT: "3001"
+    LOG_LEVEL: info
+    LOG_DIR: "./logs"
+    # API and service URLs
+    NOCTEL_API_URL: # REQUIRED: Internal API URL
+    WS_URL: # REQUIRED: WebSocket URL
+    PUB_DISPLAY_URL: # REQUIRED: Public display URL
+    # Redis configuration
+    REDIS_URL: # REQUIRED: Redis connection string
+    # Security
+    SESSION_SECRET: # REQUIRED: Session secret
+    JWT_ACCESS_SECRET: # REQUIRED: JWT access secret
+    # Third-party API keys
+    ASSEMBLYAI_API_KEY: # REQUIRED: AssemblyAI key
+    MAPBOX_API_KEY: # REQUIRED: Mapbox key
+    OPENWEATHER_API_KEY: # REQUIRED: OpenWeather key
+    # Debug settings
+    DEBUG: # REQUIRED: "true" or "false"
+    DEBUG_API: "1"
+    DEBUG_ENABLED: # REQUIRED: "true" or "false"
+    DEBUG_ERRORS: # REQUIRED: "true" or "false"
+    DEBUG_HTTP_RESPONSES: # REQUIRED: "true" or "false"
+    DEBUG_WS_CONNECTION: # REQUIRED: "true" or "false"
+    DEBUG_WS_ERRORS: # REQUIRED: "true" or "false"
+    # Features
+    SCREEN_SHARE_ENABLED: "true"
+    # Database password (from API config)
+    DB_PASSWORD: # REQUIRED: Database password
+    # RabbitMQ password (from API config)
+    RABBITMQ_PASSWORD: # REQUIRED: RabbitMQ password
+
+noctel-lns:
+  version: # REQUIRED: LNS version tag
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 300m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    fsGroup: 1001
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - noctel
+          topologyKey: kubernetes.io/hostname
+  ports:
+    - name: grpc
+      containerPort: 8080
+      protocol: TCP
+    - name: http
+      containerPort: 8081
+      protocol: TCP
+  probes:
+    readiness:
+      exec:
+        command:
+        - pgrep
+        - -f
+        - node.*index.js
+      initialDelaySeconds: 15
+      periodSeconds: 15
+      timeoutSeconds: 5
+    liveness:
+      exec:
+        command:
+        - pgrep
+        - -f
+        - node.*index.js
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      timeoutSeconds: 10
+  fieldRefs:
+    - name: POD_NAME
+      fieldPath: metadata.name
+    - name: POD_NAMESPACE
+      fieldPath: metadata.namespace
+    - name: POD_IP
+      fieldPath: status.podIP
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    PORT: "3000"
+    LOG_LEVEL: info
+    # Debug settings
+    DEBUG: # REQUIRED: "true" or "false"
+    DEBUG_ALL: # REQUIRED: "true" or "false"
+    # Database configuration
+    DB_HOST: # REQUIRED: Database host
+    DB_PORT: "3306"
+    DB_NAME: # REQUIRED: Database name
+    DB_USER: # REQUIRED: Database user
+    DB_PASSWORD: # REQUIRED: Database password
+    # RabbitMQ configuration
+    RABBITMQ_HOST: # REQUIRED: RabbitMQ host
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USERNAME: # REQUIRED: RabbitMQ username
+    RABBITMQ_PASSWORD: # REQUIRED: RabbitMQ password
+    # ChirpStack configuration
+    # NOTE: CHIRPSTACK_APPLICATION_ID + TENANT_ID removed 2026-05-16
+    # (task #86) — region-specific, not global. Chirp workers source
+    # them via CHIRPSTACK_REGION + a lookup against ChirpStack.
+    CHIRPSTACK_API_KEY: # REQUIRED: ChirpStack API key
+    CHIRPSTACK_URL: # REQUIRED: ChirpStack URL
+    CHIRPSTACK_SERVER_ID: # REQUIRED: Environment identifier
+
+noctel-ape:
+  version: # REQUIRED: APE version tag
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    PORT: "3000"
+    LOG_LEVEL: info
+
+noctel-migrate:
+  version: # REQUIRED: Migrate version tag
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    LOG_LEVEL: info
+    # Database configuration (required by migrate)
+    DB_HOST: # REQUIRED: Database host
+    DB_PORT: "3306"
+    DB_NAME: # REQUIRED: Database name
+    DB_USER: # REQUIRED: Database user
+    DB_PASSWORD: # REQUIRED: Database password
+
+# ChirpStack Services
+chirpstack-core:
+  # Image and scaling
+  image: # REQUIRED: ChirpStack core image
+  replicas: 2
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "4"
+      memory: 4Gi
+  # Environment-specific connections
+  postgresql:
+    dsn: # REQUIRED: PostgreSQL connection string
+  redis:
+    servers: # REQUIRED: Redis servers array
+  mqtt:
+    server: # REQUIRED: MQTT server URL
+
+chirpstack-gateway-bridge:
+  image: # REQUIRED: Gateway bridge image
+  replicas: 1
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+chirpstack-mosquitto:
+  image: # REQUIRED: Mosquitto image
+  replicas: 2
+  resources:
+    requests:
+      cpu: 200m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+# Infrastructure Services
+redis:
+  # Resource configuration
+  master:
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    persistence:
+      storageClass: "longhorn"
+      size: "8Gi"
+  replica:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistence:
+      storageClass: "longhorn"
+      size: "8Gi"
+  # Environment-specific naming
+  fullnameOverride: # REQUIRED: Redis instance name (redis-dev, redis-qa, redis-prod)
+
+rabbitmq:
+  # Cluster configuration
+  image: # REQUIRED: RabbitMQ image
+  replicas: 3
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  # Storage configuration
+  persistence:
+    storage: "20Gi"
+    storageClass: "longhorn"
+  # Environment-specific users and queues
+  users:
+    - name: # REQUIRED: Default user name
+      tags: ["administrator"]
+    - name: # REQUIRED: API user name
+      tags: []
+    - name: # REQUIRED: Mailer user name
+      tags: []
+  queues:
+    - name: "mail-out"
+      durable: true
+    - name: # REQUIRED: ChirpStack queue name
+      durable: true
+      arguments:
+        x-message-ttl: 86400000
+    - name: # REQUIRED: LNS operations queue name
+      durable: true
+      arguments:
+        x-dead-letter-routing-key: # REQUIRED: DLQ routing key
+        x-message-ttl: 3600000
+    - name: # REQUIRED: LNS operations DLQ name
+      durable: true
+      arguments:
+        x-message-ttl: 86400000
+  # Environment-specific cluster name
+  clusterName: # REQUIRED: RabbitMQ cluster name
+
+elasticsearch:
+  # Version configuration
+  version: # REQUIRED: Elasticsearch version
+  # Node configuration
+  nodeSets:
+    - name: "default"
+      count: 1
+      # Resource configuration
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: "2"
+          memory: 4Gi
+      # Storage configuration
+      storage:
+        size: "10Gi"
+        storageClass: "longhorn"
+      # Elasticsearch configuration
+      config:
+        node.store.allow_mmap: false
+        xpack.security.enabled: false
+
+nt-mq-mailer:
+  version: # REQUIRED: Mailer version tag
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  command:
+    - node
+  args:
+    - app.js
+  env:
+    NODE_ENV: # REQUIRED: Environment name
+    LOG_LEVEL: info
+    DEBUG: "false"
+    # RabbitMQ configuration
+    RABBITMQ_URL: # REQUIRED: RabbitMQ host
+    RABBITMQ_PORT: "5672"
+    RABBITMQ_USER: # REQUIRED: RabbitMQ user
+    RABBITMQ_PASSWORD: # REQUIRED: RabbitMQ password
+    QUEUE_NAME: mail-out
+    # Postal API configuration
+    POSTAL_API_URL: # REQUIRED: Postal API URL
+    POSTAL_API_KEY: # REQUIRED: Postal API key
+
+seaweedfs:
+  # Environment-specific naming
+  namePrefix: # REQUIRED: SeaweedFS name prefix
+  # Storage configuration
+  master:
+    storage:
+      size: "10Gi"
+      storageClass: "longhorn"
+  volume:
+    replicas: 3
+    storage:
+      size: "20Gi"
+      storageClass: "longhorn"
+  filer:
+    replicas: 2
+    storage:
+      size: "10Gi"
+      storageClass: "longhorn"
+  s3:
+    replicas: 2
+
+traefik:
+  # Image and scaling
+  image: # REQUIRED: Traefik image
+  replicas: 2
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  # Environment-specific load balancer IP
+  service:
+    loadBalancerIP: # REQUIRED: MetalLB IP address

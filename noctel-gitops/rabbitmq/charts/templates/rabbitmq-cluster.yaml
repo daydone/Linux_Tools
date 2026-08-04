@@ -1,0 +1,60 @@
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqCluster
+metadata:
+  name: ha-rabbit
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  replicas: {{ index .Values "rabbitmq" "replicaCount" }}
+  image: rabbitmq:{{ index .Values "rabbitmq" "version" }}-management
+
+  {{- with index .Values "rabbitmq" "resources" }}
+  resources:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with index .Values "rabbitmq" "persistence" }}
+  persistence:
+    storageClassName: {{ .storageClass }}
+    storage: {{ .size }}
+  {{- end }}
+
+  rabbitmq:
+    additionalConfig: |
+      cluster_formation.peer_discovery_backend = rabbit_peer_discovery_k8s
+      cluster_formation.k8s.host = kubernetes.default.svc
+      cluster_formation.node_cleanup.interval = 30
+      cluster_formation.node_cleanup.only_log_warning = true
+      cluster_partition_handling = autoheal
+      queue_master_locator = min-masters
+      loopback_users.guest = false
+      management.load_definitions = /etc/rabbitmq/definitions/definitions.json
+
+  service:
+    type: ClusterIP
+
+  terminationGracePeriodSeconds: 604800
+  delayStartSeconds: 30
+
+  override:
+    statefulSet:
+      spec:
+        template:
+          spec:
+            {{- with index .Values "rabbitmq" "nodeSelector" }}
+            nodeSelector:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            {{- with index .Values "rabbitmq" "affinity" }}
+            affinity:
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            containers:
+            - name: rabbitmq
+              volumeMounts:
+              - mountPath: /etc/rabbitmq/definitions
+                name: definitions
+                readOnly: true
+            volumes:
+            - configMap:
+                name: rabbitmq-definitions
+              name: definitions

@@ -1,0 +1,22 @@
+{{- if and (dig "noctel-api-platform-sync" "metrics" "enabled" false (.Values | toJson | fromJson)) (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: platform-sync-api
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: platform-sync-api
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  endpoints:
+  - port: health
+    path: {{ index .Values "noctel-api-platform-sync" "metrics" "path" | default "/metrics" }}
+    interval: {{ index .Values "noctel-api-platform-sync" "metrics" "interval" | default "30s" }}
+    scrapeTimeout: {{ index .Values "noctel-api-platform-sync" "metrics" "scrapeTimeout" | default "10s" }}
+{{- end }}

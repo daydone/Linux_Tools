@@ -1,0 +1,15 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: telnoc.com
+
+noctel-api-actions:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: IfNotPresent
+  env:
+    SERVICE_NAME: actions
+  secrets:

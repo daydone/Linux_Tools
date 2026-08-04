@@ -1,0 +1,40 @@
+global:
+  namespace: dev
+
+elasticsearch:
+    version: "8.15.5"
+    replicaCount: 3
+    # ECK 2.14 unconditionally writes role_mappings to the cluster's
+    # file-settings; ES rejects unknown top-level keys when the security
+    # plugin (which provides the role_mappings handler) isn't loaded.
+    # Enabling security registers the handler, file-settings parses
+    # cleanly, ES bootstrap unblocks. Plain HTTP + Basic auth — fine
+    # for an intra-namespace k3s setup; saves us from mounting CA certs
+    # in every consumer pod. Consumers read ELASTICSEARCH_URL from
+    # noctel-api-secrets and the shared elastic.js helper extracts the
+    # userinfo into a Basic Authorization header.
+    security:
+      enabled: true
+    http:
+      tls:
+        disabled: true
+    volumeClaimTemplate:
+      resources:
+        requests:
+          storage: 30Gi
+    # ECK requires memory request == limit so it can compute the JVM
+    # heap correctly (Xms/Xmx are derived from the container limit).
+    # ResourcesAwareManagement condition flipped False with mismatched
+    # values: "memory request and limit do not have the same value".
+    # CPU can differ; only memory has to match.
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000

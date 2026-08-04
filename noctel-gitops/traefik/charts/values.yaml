@@ -1,0 +1,54 @@
+traefik:
+  image:
+    repository: traefik
+    tag: v3.5.0
+    pullPolicy: IfNotPresent
+
+  replicas: 0
+
+  service:
+    type: LoadBalancer
+    ports:
+      web: 80
+      websecure: 443
+      metrics: 9100
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  args:
+    - --api.dashboard=true
+    - --accesslog=true
+    - --entrypoints.web.address=:8000
+    - --entrypoints.websecure.address=:8443
+    - --entrypoints.metrics.address=:9100
+    - --providers.kubernetescrd
+    - --providers.kubernetesingress
+    - --log.level=INFO
+    - --metrics.prometheus=true
+    - --metrics.prometheus.entryPoint=metrics
+
+  env:
+    - name: DNSMADEEASY_API_EMAIL
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: email
+    - name: DNSMADEEASY_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-key
+    - name: DNSMADEEASY_API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-secret
+
+rbac:
+  create: true

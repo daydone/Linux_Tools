@@ -1,0 +1,22 @@
+{{- if and (index .Values "noctel-api-platform-sync" "enabled") (index .Values "noctel-api-platform-sync" "service" "enabled") }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: platform-sync-api
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: platform-sync-api
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+  ports:
+    - name: http
+      port: {{ index .Values "noctel-api-platform-sync" "service" "port" | default 7273 }}
+      targetPort: {{ index .Values "noctel-api-platform-sync" "service" "targetPort" | default "http" }}
+      protocol: TCP
+{{- end }}

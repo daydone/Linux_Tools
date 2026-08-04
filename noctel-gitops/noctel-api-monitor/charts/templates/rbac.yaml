@@ -1,0 +1,50 @@
+{{- /*
+  RBAC for the K8s pod-log streamer (services/k8s-pod-logs.js).
+  monitor needs to call `GET /api/v1/namespaces/$ns/pods/$pod/log`
+  with follow=true, which requires get/watch on pods/log AND get on
+  pods (the SDK does a pre-flight pod read to discover containers).
+
+  Namespace-scoped on purpose: each environment's monitor only reads
+  logs from its own namespace. If we later want a cross-namespace
+  view (super sees prod logs from a desk pointed at qa), promote
+  these to ClusterRole + ClusterRoleBinding and restrict access at
+  the gateway WS gate instead.
+*/}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Chart.Name }}-pod-logs
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Chart.Name }}-pod-logs
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Chart.Name }}-pod-logs
+subjects:
+- kind: ServiceAccount
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}

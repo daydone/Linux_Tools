@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-clickhouse-migrations
+description: Apply the noctel_trace_<env> ClickHouse schema (idempotent CREATE IF NOT EXISTS) via a Helm-managed Job / ArgoCD PreSync hook.
+type: application
+version: 0.1.0
+appVersion: "1.0"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

@@ -1,0 +1,149 @@
+global:
+  imageRegistry: pdx-harbor.telnoc.com
+  imagePullSecrets:
+    - name: harbor-pull
+  security:
+    allowInsecureImages: true
+
+alloy:
+  image:
+    registry: pdx-harbor.telnoc.com
+    repository: noctel/grafana-alloy/alloy
+    tag: "v1.16.1"
+    pullSecrets:
+      - name: harbor-pull
+
+configReloader:
+  image:
+    registry: pdx-harbor.telnoc.com
+    repository: noctel/configmap-reload
+    tag: "0.15.0-debian-12-r12"
+    pullSecrets:
+      - name: harbor-pull
+
+resourceType: daemonset
+replicas: 0
+replicaCount: 0
+
+nodeSelector:
+  otel/disabled: "true"
+
+presets:
+  kubeAttributesProcessor:
+    enabled: true
+  kubeletMetricsReceiver:
+    enabled: false
+  hostMetrics:
+    enabled: false
+
+config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        send_batch_size: 512
+        timeout: 5s
+
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 20
+
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata:
+            - container.id
+            - k8s.namespace.name
+            - k8s.deployment.name
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.node.name
+          labels:
+            - tag_name: app
+              key: app
+            - tag_name: version
+              key: version
+
+      resource:
+        attributes:
+          - key: cluster.name
+            value: pdx1
+            action: upsert
+          - key: service.namespace
+            from_attribute: k8s.namespace.name
+            action: insert
+
+    exporters:
+      otlp:
+        endpoint: tempo.monitoring.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+      prometheusremotewrite:
+        endpoint: "http://prometheus-operated.monitoring.svc.cluster.local:9090/api/v1/write"
+        resource_to_telemetry_conversion:
+          enabled: true
+
+      loki:
+        endpoint: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        resource_detection_enabled: true
+        resource_detection_override: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, k8sattributes, resource]
+          exporters: [otlp]
+
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, k8sattributes, resource]
+          exporters: [prometheusremotewrite]
+
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch, k8sattributes, resource]
+          exporters: [loki]
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+service:
+  enabled: true
+  type: ClusterIP
+  ports:
+    otlp-grpc:
+      enabled: true
+      containerPort: 4317
+      servicePort: 4317
+      protocol: TCP
+    otlp-http:
+      enabled: true
+      containerPort: 4318
+      servicePort: 4318
+      protocol: TCP
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8888"
+  prometheus.io/path: "/metrics"
+
+autoscaling:
+  enabled: false
+  minReplicas: 0
+  maxReplicas: 0
+  targetCPUUtilizationPercentage: 70

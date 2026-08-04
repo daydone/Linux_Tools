@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-notify-websocket-out
+description: Helm chart for noctel-notify-websocket-out
+type: application
+version: 0.1.0
+appVersion: "latest"

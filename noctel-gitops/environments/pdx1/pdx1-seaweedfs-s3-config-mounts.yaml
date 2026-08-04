@@ -1,0 +1,81 @@
+# SeaweedFS S3 API Configuration - Mount ConfigMaps with credential/bucket policies
+# These patches mount the S3 config in each namespace's S3 API deployment
+
+---
+# Dev S3 API - mount config
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-s3
+  namespace: dev
+spec:
+  template:
+    spec:
+      containers:
+      - name: seaweedfs-s3
+        args:
+        - s3
+        - -filer=seaweedfs-filer.dev.svc.cluster.local:8888
+        - -ip.bind=0.0.0.0
+        - -port=8333
+        - -config=/etc/seaweedfs/s3_config.json
+        volumeMounts:
+        - name: s3-config
+          mountPath: /etc/seaweedfs
+          readOnly: true
+      volumes:
+      - name: s3-config
+        configMap:
+          name: seaweedfs-s3-config-dev
+---
+# QA S3 API - mount config
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-s3
+  namespace: qa
+spec:
+  template:
+    spec:
+      containers:
+      - name: seaweedfs-s3
+        args:
+        - s3
+        - -filer=seaweedfs-filer.qa.svc.cluster.local:8888
+        - -ip.bind=0.0.0.0
+        - -port=8333
+        - -config=/etc/seaweedfs/s3_config.json
+        volumeMounts:
+        - name: s3-config
+          mountPath: /etc/seaweedfs
+          readOnly: true
+      volumes:
+      - name: s3-config
+        configMap:
+          name: seaweedfs-s3-config-qa
+---
+# Prod S3 API - mount config
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-s3
+  namespace: prod
+spec:
+  template:
+    spec:
+      containers:
+      - name: seaweedfs-s3
+        args:
+        - s3
+        - -filer=seaweedfs-filer.prod.svc.cluster.local:8888
+        - -ip.bind=0.0.0.0
+        - -port=8333
+        - -config=/etc/seaweedfs/s3_config.json
+        volumeMounts:
+        - name: s3-config
+          mountPath: /etc/seaweedfs
+          readOnly: true
+      volumes:
+      - name: s3-config
+        configMap:
+          name: seaweedfs-s3-config-prod

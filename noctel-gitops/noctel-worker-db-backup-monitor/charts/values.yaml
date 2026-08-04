@@ -1,0 +1,40 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-worker-db-backup-monitor:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-worker-db-backup-monitor
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  env:
+    - name: HEALTH_PORT
+      value: "9294"
+    - name: DB_BACKUP_FULL_MAX_AGE_SECONDS
+      value: "90000"     # 25h
+    - name: DB_BACKUP_INCR_MAX_AGE_SECONDS
+      value: "25200"     # 7h
+    - name: DB_BACKUP_BINLOG_MAX_AGE_SECONDS
+      value: "600"       # 10m
+    - name: DB_BACKUP_POLL_INTERVAL_SECONDS
+      value: "900"       # 15m
+    # DB_BACKUP_S3_* and NOTIFY_WEBHOOK_URL come from
+    # noctel-api-secrets (read-only IAM creds + webhook URL).
+
+  metrics:
+    enabled: false
+    port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

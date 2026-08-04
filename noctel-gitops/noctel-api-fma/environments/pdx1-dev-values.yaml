@@ -1,0 +1,19 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain: { prefix: pdx1-dev, base: telnoc.com }
+
+noctel-api-fma:
+  version: "latest"
+  replicaCount: 1
+  image: { pullPolicy: Always }
+  env:
+    PORT: "7082"
+    HEALTH_PORT: "9082"
+    HOST: "0.0.0.0"
+    SERVICE_NAME: api-fma
+    LOG_LEVEL: debug
+    NODE_ENV: development
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }

@@ -1,0 +1,21 @@
+{{- if (index .Values "noctel-notify-email-out").egressGateway.enabled }}
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: {{ .Chart.Name }}-{{ .Values.global.namespace | default "default" }}-egress
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  selectors:
+  - podSelector:
+      matchLabels:
+        app: {{ .Chart.Name }}
+  destinationCIDRs:
+  - 0.0.0.0/0
+  egressGateway:
+    egressIP: {{ (index .Values "noctel-notify-email-out").egressGateway.egressIP | quote }}
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"
+{{- end }}

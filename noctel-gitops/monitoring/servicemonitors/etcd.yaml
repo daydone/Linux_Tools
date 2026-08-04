@@ -1,0 +1,20 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: etcd
+  namespace: monitoring
+  labels:
+    component: etcd
+spec:
+  selector:
+    matchLabels:
+      k3s-app: etcd
+  endpoints:
+  - port: client
+    interval: 30s
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: localhost
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-api-platform-sync
+description: Per-env HTTP API for the platform-sync diff + promote tool. Super-only. Reads only the local noctel-api-storage; never holds cross-env DB credentials. Pairs with noctel-worker-platform-sync.
+type: application
+version: 0.1.0
+appVersion: "latest"

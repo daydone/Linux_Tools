@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-provisioning
+description: noctel-provisioning - Public device-provisioning edge (configs/firmware/media)
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

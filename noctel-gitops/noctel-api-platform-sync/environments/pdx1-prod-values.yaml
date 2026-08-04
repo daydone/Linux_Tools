@@ -1,0 +1,19 @@
+global:
+  namespace: prod
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-api-platform-sync:
+  enabled: true
+  replicaCount: 2
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  extraEnv:
+    - name: PLATFORM_SYNC_ENV
+      value: "prod"

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: otel-collector
+description: OpenTelemetry Collector — unified observability pipeline
+type: application
+version: 1.0.0
+dependencies:
+  - name: grafana-alloy
+    version: "1.0.7"
+    repository: https://charts.bitnami.com/bitnami

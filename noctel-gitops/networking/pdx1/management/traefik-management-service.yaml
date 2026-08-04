@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: management-vlan-pool
+  labels:
+    app: traefik-management
+    app.kubernetes.io/instance: traefik-management
+    app.kubernetes.io/name: traefik
+    cilium.io/l2-pool: management-vlan
+  name: traefik-management
+  namespace: management
+spec:
+  allocateLoadBalancerNodePorts: true
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.0.95.151
+  ports:
+  - name: web
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  - name: websecure
+    port: 443
+    protocol: TCP
+    targetPort: 443
+  - name: metrics
+    port: 9100
+    protocol: TCP
+    targetPort: 9100
+  selector:
+    app: traefik-management
+  sessionAffinity: None
+  type: LoadBalancer

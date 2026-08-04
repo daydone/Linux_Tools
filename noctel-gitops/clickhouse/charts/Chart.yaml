@@ -1,0 +1,13 @@
+apiVersion: v2
+name: clickhouse
+description: Helm wrapper for ClickStack (ClickHouse + operators) with storage tiering
+type: application
+version: 1.0.0
+appVersion: "1.0"
+dependencies:
+  - name: clickstack-operators
+    version: "1.0.0"
+    repository: https://clickhouse.github.io/ClickStack-helm-charts
+  - name: clickstack
+    version: "1.0.0"
+    repository: https://clickhouse.github.io/ClickStack-helm-charts

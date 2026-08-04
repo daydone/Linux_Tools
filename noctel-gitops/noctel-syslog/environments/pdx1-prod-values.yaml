@@ -1,0 +1,24 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-syslog:
+  version: "latest"  # gated by manual promotion per project_dev_qa_track_latest
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  # Exposed via the noctel-syslog-lb MetalLB service (10.0.99.157,
+  # networking/pdx1/prod), externalTrafficPolicy Local so the collector
+  # sees the sender's real source IP.
+  env:
+    RAW_INDEX_ENABLED: "true"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

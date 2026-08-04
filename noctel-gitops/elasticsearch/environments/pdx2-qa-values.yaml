@@ -1,0 +1,23 @@
+elasticsearch:
+    # Version configuration
+    version: "8.13.4"
+    # Node configuration
+    nodeSets:
+      - name: "default"
+        count: 1
+        # Resource configuration
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        # Storage configuration
+        storage:
+          size: "10Gi"
+          storageClass: "longhorn"
+        # Elasticsearch configuration
+        config:
+          node.store.allow_mmap: false
+          xpack.security.enabled: false

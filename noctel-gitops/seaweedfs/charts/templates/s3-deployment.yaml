@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-s3
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-s3
+    component: s3
+spec:
+  replicas: {{ index .Values "seaweedfs" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}-s3
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}-s3
+        component: s3
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      {{- with index .Values "seaweedfs" "securityContext" }}
+      securityContext:
+        fsGroup: {{ .fsGroup }}
+        runAsGroup: {{ .runAsGroup }}
+        runAsNonRoot: {{ .runAsNonRoot }}
+        runAsUser: {{ .runAsUser }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Chart.Name }}-s3
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: seaweedfs-s3
+        image: "{{ index .Values "seaweedfs" "image" "repository" }}:{{ index .Values "seaweedfs" "version" }}"
+        command:
+        - /usr/bin/weed
+        args:
+        - s3
+        - -filer={{ .Chart.Name }}-filer.{{ .Values.global.namespace }}.svc.cluster.local:8888
+        - -ip.bind=0.0.0.0
+        - -port=8333
+        {{- if index .Values "seaweedfs" "s3" "configMap" "enabled" }}
+        - -config=/etc/seaweedfs/s3_config.json
+        {{- end }}
+        ports:
+        - containerPort: 8333
+          name: s3
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+        {{- if index .Values "seaweedfs" "s3" "configMap" "enabled" }}
+        volumeMounts:
+        - name: s3-config
+          mountPath: /etc/seaweedfs
+          readOnly: true
+        {{- end }}
+        livenessProbe:
+          tcpSocket:
+            port: 8333
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8333
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: s3-config
+        secret:
+          secretName: seaweedfs-s3-credentials
+          defaultMode: 420

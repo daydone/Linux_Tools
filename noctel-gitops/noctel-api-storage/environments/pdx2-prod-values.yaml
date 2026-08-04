@@ -1,0 +1,10 @@
+global:
+  cluster: pdx2
+  namespace: prod
+  domain:
+    prefix: pdx2-prod
+    base: telnoc.com
+
+noctel-api-storage:
+  version: "latest"
+  replicaCount: 1

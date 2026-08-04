@@ -1,0 +1,11 @@
+apiVersion: v2
+name: noctel-api-storage
+description: noctel-api-storage - Standalone separated chart for individual deployment
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com
+sources:
+  - https://github.com/noctel/noctel-api-storage

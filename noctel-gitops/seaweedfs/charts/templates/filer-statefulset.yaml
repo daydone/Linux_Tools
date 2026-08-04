@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Chart.Name }}-filer
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-filer
+    component: filer
+spec:
+  replicas: {{ index .Values "seaweedfs" "replicaCount" }}
+  serviceName: {{ .Chart.Name }}-filer
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}-filer
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}-filer
+        component: filer
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      {{- with index .Values "seaweedfs" "securityContext" }}
+      securityContext:
+        fsGroup: {{ .fsGroup }}
+        runAsGroup: {{ .runAsGroup }}
+        runAsNonRoot: {{ .runAsNonRoot }}
+        runAsUser: {{ .runAsUser }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Chart.Name }}-filer
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: {{ .Chart.Name }}-filer
+        image: "{{ index .Values "seaweedfs" "image" "repository" }}:{{ index .Values "seaweedfs" "version" }}"
+        imagePullPolicy: {{ index .Values "seaweedfs" "image" "pullPolicy" }}
+        command:
+        - /usr/bin/weed
+        args:
+        - filer
+        {{- if index .Values "seaweedfs" "externalMaster" "enabled" }}
+        - -master={{ index .Values "seaweedfs" "externalMaster" "endpoint" }}
+        {{- else }}
+        - -master={{ .Chart.Name }}-master-client.{{ .Values.global.namespace }}.svc.cluster.local:9333
+        {{- end }}
+        - -ip=$(POD_NAME).{{ .Chart.Name }}-filer.{{ .Values.global.namespace }}.svc.cluster.local
+        - -port=8888
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+        - containerPort: 8888
+          name: filer
+        - containerPort: 18888
+          name: grpc
+        {{- with index .Values "seaweedfs" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "seaweedfs" "securityContext" }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: {{ .runAsUser }}
+        {{- end }}
+        # Probes loosened 2026-05-03 after the filer was getting killed
+        # in a crashloop while Galera (its filer-store backend) was slow
+        # post worker-reboot — the original 30s+30s window wasn't enough
+        # for the filer to finish store init + bind :8888. The new
+        # window allows up to 90s before liveness fires, which covers
+        # observed Galera-slow startup latency without losing real
+        # outage detection.
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8888
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8888
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 6
+        volumeMounts:
+        - name: filer-data
+          mountPath: /data
+        - name: filer-config
+          mountPath: /etc/seaweedfs
+      volumes:
+      - name: filer-config
+        configMap:
+          name: {{ .Chart.Name }}-filer-config
+  volumeClaimTemplates:
+  - metadata:
+      name: filer-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: {{ index .Values "seaweedfs" "persistence" "storageClass" }}
+      resources:
+        requests:
+          storage: {{ index .Values "seaweedfs" "persistence" "size" }}

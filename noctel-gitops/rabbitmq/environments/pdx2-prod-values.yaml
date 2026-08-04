@@ -1,0 +1,29 @@
+global:
+  namespace: prod
+
+rabbitmq:
+    enabled: true
+    replicaCount: 3
+    amqp:
+      ingressRoute:
+        enabled: true
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - ha-rabbit
+            topologyKey: kubernetes.io/hostname
+    auth:
+      username: admin
+      password: "admin123"
+    createUser: true
+    definitions:
+      generateFromSecret: false

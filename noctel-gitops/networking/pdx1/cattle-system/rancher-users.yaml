@@ -1,0 +1,38 @@
+# Rancher admin users for pdx1
+# Note: passwords are set directly via the cattle-local-user-passwords Secrets.
+# Apply this manifest to set user objects and ClusterRoleBindings.
+# After applying, set passwords by patching the users (triggers Rancher to create Secrets):
+#   kubectl patch user user-92rg6    --type=merge -p '{"password":"<plaintext>"}'
+#   kubectl patch user user-finbarday --type=merge -p '{"password":"<plaintext>"}'
+#   kubectl patch user user-corys     --type=merge -p '{"password":"<plaintext>"}'
+---
+# Admin user (metadata.name: user-92rg6)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rancher-admin-user-finbarday
+  labels:
+    authz.management.cattle.io/bootstrapping: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: user-finbarday
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rancher-admin-user-corys
+  labels:
+    authz.management.cattle.io/bootstrapping: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: user-corys

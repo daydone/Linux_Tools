@@ -1,0 +1,8 @@
+noctel-display:
+    version: "v2.0.9"       # STABLE - Last deployed 2025-09-13
+    replicaCount: 3
+    config:
+      nodeEnv: production
+      apiUrl: "http://noctel-prod-api-service.prod.svc.cluster.local:3000"
+      wsUrl: "wss://api.noctel.com/ws"
+      pubDisplayUrl: "https://d.noc.tel"

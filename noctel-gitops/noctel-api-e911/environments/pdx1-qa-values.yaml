@@ -1,0 +1,18 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-api-numbers:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7310"
+    HEALTH_PORT: "9310"
+    SERVICE_NAME: noctel-api-numbers
+  secrets:
+    #       INTELIQUENT_CLIENT_ID, INTELIQUENT_CLIENT_SECRET, TELNYX_API_KEY

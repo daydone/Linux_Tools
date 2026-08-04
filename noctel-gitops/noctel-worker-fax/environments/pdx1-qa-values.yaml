@@ -1,0 +1,21 @@
+global:
+  namespace: qa
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-worker-fax:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+  extraEnv:
+    - name: ENABLE_INBOUND
+      value: "false"
+    - name: ENABLE_OUTBOUND
+      value: "false"

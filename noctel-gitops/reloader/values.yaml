@@ -1,0 +1,28 @@
+# Reloader helm values. Watches every namespace by default, but we
+# scope to `dev` and `qa` here so a per-cluster install doesn't
+# spin up restarts in unrelated workloads. Annotation-only mode —
+# the Deployment opts in via `reloader.stakater.com/auto: "true"`.
+reloader:
+  watchGlobally: false
+  reloader:
+    # Annotation-only: Deployments without the annotation are ignored.
+    # Without this, Reloader restarts EVERY Deployment in a watched
+    # namespace whenever ANY ConfigMap or Secret changes — the
+    # opposite of what we want.
+    autoReloadAll: false
+    matchLabels: {}
+    deployment:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+    namespaceSelector: ""
+    # Restrict to the platform's three namespaces. Drop or add as
+    # cluster topology evolves; today we run dev / qa / prod isolated.
+    namespaces: "dev,qa,prod"
+    readOnlyRootFileSystem: true
+    podMonitor:
+      enabled: false

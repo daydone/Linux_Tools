@@ -1,0 +1,35 @@
+{{- $v := index .Values "noctel-syslog" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  type: {{ $v.service.type | default "ClusterIP" }}
+  ports:
+  - name: syslog-udp
+    port: 514
+    targetPort: syslog-udp
+    protocol: UDP
+  - name: syslog-tcp
+    port: 514
+    targetPort: syslog-tcp
+    protocol: TCP
+  {{- if ne ($v.env.SYSLOG_TLS_PORT | toString) "0" }}
+  - name: syslog-tls
+    port: 6514
+    targetPort: syslog-tls
+    protocol: TCP
+  {{- end }}
+  - name: admin-http
+    port: 7380
+    targetPort: admin-http
+    protocol: TCP
+  - name: health
+    port: 9380
+    targetPort: health
+    protocol: TCP
+  selector:
+    app: {{ .Chart.Name }}

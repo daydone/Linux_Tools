@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: keydb-prod
+  namespace: argocd
+  labels:
+    cluster: pdx1
+    environment: prod
+    component: keydb
+spec:
+  project: noctel-prod
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: keydb/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx1-prod-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

@@ -1,0 +1,87 @@
+{{- if index .Values "noctel-worker-fma" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: fma-worker
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+  # stakater/reloader picks these up so a noctel-api-secrets or
+  # noctel-platform-env edit triggers a rolling restart automatically
+  # — per project_reloader_annotations.
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: {{ index .Values "noctel-worker-fma" "replicaCount" }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fma-worker
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fma-worker
+        app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+        app.kubernetes.io/name: noctel
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: fma-worker
+                  app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: worker
+        image: "{{ index .Values "noctel-worker-fma" "image" "repository" }}:{{ index .Values "noctel-worker-fma" "image" "tag" }}"
+        imagePullPolicy: {{ index .Values "noctel-worker-fma" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 9293
+          name: http
+          protocol: TCP
+        # DATABASE_URL, REDIS_URL, AMQP_URL, ELASTICSEARCH_URL,
+        # SERVICE_STORAGE_URL, SERVICE_SECRET, FAXBACK_API_URL,
+        # FAXBACK_USERNAME/PASSWORD, FAXBACK_ADMIN_USERNAME/PASSWORD
+        # come from the shared secret + configmap.
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- with index .Values "noctel-worker-fma" "env" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with index .Values "noctel-worker-fma" "extraEnv" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-worker-fma" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      enableServiceLinks: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,17 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-notify-webhook-in:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9408"
+    HTTP_PORT: "7408"
+    SERVICE_NAME: noctel-notify-webhook-in
+  secrets:

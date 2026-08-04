@@ -1,0 +1,21 @@
+global:
+  namespace: dev
+
+# Inherits chart defaults from keydb/charts/values.yaml:
+#   - resources: 1Gi req / 2Gi limit, 500m / 2000m CPU
+#   - serverThreads: 4
+#   - keydb.conf: maxmemory 1500mb, looser save rules,
+#     auto-aof-rewrite-min-size 512mb, repl-backlog-size 64mb,
+#     activedefrag enabled
+# Override here only when dev needs to differ from those defaults.
+# Dev keeps a lower replicaCount than qa/prod to free node memory.
+
+keydb:
+  enabled: true
+  replicaCount: 2
+  aclEnabled: true
+  aclUsername: keydb-dev
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  externalLoadBalancerIP: 10.0.97.160
+  metalLBPool: dev-vlan-pool

@@ -1,0 +1,20 @@
+global:
+  namespace: qa
+
+chirpstack-gateway-bridge:
+    version: "4.0.9"
+    image:
+      pullPolicy: IfNotPresent
+    replicaCount: 1
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    config:
+      mqtt:
+        server: "tcp://chirpstack-mosquitto:1883"

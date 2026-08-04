@@ -1,0 +1,73 @@
+{{- if index .Values "noctel-worker-platform-sync" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: platform-sync-worker
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  # Singleton — snapshots from multiple replicas would race for the
+  # same per-table object key. Phase 1 stays at 1; Phase 2 may revisit
+  # with a leader-election lease if throughput becomes a concern.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: platform-sync-worker
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: platform-sync-worker
+        app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+        app.kubernetes.io/name: noctel
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      containers:
+      - name: worker
+        image: "{{ index .Values "noctel-worker-platform-sync" "image" "repository" }}:{{ index .Values "noctel-worker-platform-sync" "image" "tag" }}"
+        imagePullPolicy: {{ index .Values "noctel-worker-platform-sync" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 9296
+          name: http
+          protocol: TCP
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- with index .Values "noctel-worker-platform-sync" "env" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with index .Values "noctel-worker-platform-sync" "extraEnv" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-worker-platform-sync" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      enableServiceLinks: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
+{{- end }}

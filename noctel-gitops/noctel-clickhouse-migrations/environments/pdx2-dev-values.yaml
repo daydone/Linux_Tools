@@ -1,0 +1,14 @@
+global:
+  cluster: pdx2
+  namespace: dev
+
+migrations:
+  database: noctel_trace_dev
+  clickhouse:
+    host: clickhouse-clickstack-clickhouse.clickhouse.svc.cluster.local
+    httpPort: 8123
+    tcpPort: 9000
+    user: default
+    passwordSecret:
+      name: clickhouse-default-credentials
+      key: CLICKHOUSE_DEFAULT_PASSWORD

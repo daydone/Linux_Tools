@@ -1,0 +1,13 @@
+---
+apiVersion: cilium.io/v2
+kind: CiliumNodeConfig
+metadata:
+  namespace: kube-system
+  name: pdx1-worker-config
+spec:
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"
+  defaults:
+    devices: "bond0.650 bond0.675 bond0.677 bond0.678 bond0.679"
+    direct-routing-device: "bond0.675"

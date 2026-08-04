@@ -1,0 +1,135 @@
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: management-vlan-pool
+spec:
+  blocks:
+  - cidr: 10.0.95.150/32
+  - cidr: 10.0.95.151/32
+  - cidr: 10.0.95.152/32
+  - cidr: 10.0.95.153/32
+  - cidr: 10.0.95.154/32
+  - cidr: 10.0.95.155/32
+  - cidr: 10.0.95.156/32
+  - cidr: 10.0.95.157/32
+  - cidr: 10.0.95.158/32
+  - cidr: 10.0.95.159/32
+  - cidr: 10.0.95.160/32
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: dev-vlan-pool
+spec:
+  blocks:
+  - cidr: 10.0.97.150/32
+  - cidr: 10.0.97.151/32
+  - cidr: 10.0.97.152/32
+  - cidr: 10.0.97.153/32
+  - cidr: 10.0.97.154/32
+  - cidr: 10.0.97.155/32
+  - cidr: 10.0.97.156/32
+  - cidr: 10.0.97.157/32
+  - cidr: 10.0.97.158/32
+  - cidr: 10.0.97.159/32
+  - cidr: 10.0.97.160/32
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: qa-vlan-pool
+spec:
+  blocks:
+  - cidr: 10.0.98.150/32
+  - cidr: 10.0.98.151/32
+  - cidr: 10.0.98.152/32
+  - cidr: 10.0.98.153/32
+  - cidr: 10.0.98.154/32
+  - cidr: 10.0.98.155/32
+  - cidr: 10.0.98.156/32
+  - cidr: 10.0.98.157/32
+  - cidr: 10.0.98.158/32
+  - cidr: 10.0.98.159/32
+  - cidr: 10.0.98.160/32
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: prod-vlan-pool
+spec:
+  blocks:
+  - cidr: 10.0.99.80/32
+  - cidr: 10.0.99.81/32
+  - cidr: 10.0.99.82/32
+  - cidr: 10.0.99.150/32
+  - cidr: 10.0.99.151/32
+  - cidr: 10.0.99.152/32
+  - cidr: 10.0.99.153/32
+  - cidr: 10.0.99.154/32
+  - cidr: 10.0.99.155/32
+  - cidr: 10.0.99.156/32
+  - cidr: 10.0.99.157/32
+  - cidr: 10.0.99.158/32
+  - cidr: 10.0.99.159/32
+  - cidr: 10.0.99.160/32
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: management-vlan-policy
+spec:
+  serviceSelector:
+    matchLabels:
+      cilium.io/l2-pool: management-vlan
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"
+  interfaces:
+  - bond0.675
+  loadBalancerIPs: true
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: dev-vlan-policy
+spec:
+  serviceSelector:
+    matchLabels:
+      cilium.io/l2-pool: dev-vlan
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"
+  interfaces:
+  - bond0.677
+  loadBalancerIPs: true
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: qa-vlan-policy
+spec:
+  serviceSelector:
+    matchLabels:
+      cilium.io/l2-pool: qa-vlan
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"
+  interfaces:
+  - bond0.678
+  loadBalancerIPs: true
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: prod-vlan-policy
+spec:
+  serviceSelector:
+    matchLabels:
+      cilium.io/l2-pool: prod-vlan
+  nodeSelector:
+    matchLabels:
+      node-role.kubernetes.io/worker: "true"
+  interfaces:
+  - bond0.679
+  loadBalancerIPs: true

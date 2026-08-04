@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-cache-sync:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    ACCOUNT_SERVICE_URL: "http://noctel-api-account.prod.svc.cluster.local:7110"
+    SERVICE_NAME: cache-sync
+  secrets:

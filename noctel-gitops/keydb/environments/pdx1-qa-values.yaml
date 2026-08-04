@@ -1,0 +1,20 @@
+global:
+  namespace: qa
+
+# Inherits chart defaults from keydb/charts/values.yaml:
+#   - resources: 1Gi req / 2Gi limit, 500m / 2000m CPU
+#   - serverThreads: 4
+#   - keydb.conf: maxmemory 1500mb, looser save rules,
+#     auto-aof-rewrite-min-size 512mb, repl-backlog-size 64mb,
+#     activedefrag enabled
+# Override here only when qa needs to differ from those defaults.
+
+keydb:
+  enabled: true
+  replicaCount: 3
+  aclEnabled: true
+  aclUsername: keydb-qa
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  externalLoadBalancerIP: 10.0.98.160
+  metalLBPool: qa-vlan-pool

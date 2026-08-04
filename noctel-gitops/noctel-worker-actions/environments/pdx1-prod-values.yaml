@@ -1,0 +1,27 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-worker-actions:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9291"
+    HOST: "0.0.0.0"
+    SERVICE_NAME: actions-worker
+    LOG_LEVEL: info
+    NODE_ENV: production
+    AMQP_PREFETCH: "50"
+    EXECUTION_TTL_SECONDS: "86400"
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "2"
+      memory: 1Gi

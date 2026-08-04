@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-worker-chirp-out:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: chirp-out
+    CHIRPSTACK_REGION: pdx1
+  secrets:

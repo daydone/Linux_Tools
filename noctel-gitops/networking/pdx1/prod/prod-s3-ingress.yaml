@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prod-s3-ingress
+  namespace: prod
+  annotations:
+spec:
+  ingressClassName: traefik-prod
+  rules:
+  - host: pdx1-prod-s3.telnoc.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: seaweedfs-s3
+            port:
+              number: 8333
+
+  tls:
+  - hosts:
+    - pdx1-prod-s3.telnoc.com

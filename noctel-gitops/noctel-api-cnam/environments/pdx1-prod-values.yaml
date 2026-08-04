@@ -1,0 +1,21 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-cnam:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  env:
+    PORT: "7310"
+    HEALTH_PORT: "9310"
+    SERVICE_NAME: noctel-api-numbers
+  secrets:
+    #       INTELIQUENT_CLIENT_ID, INTELIQUENT_CLIENT_SECRET, TELNYX_API_KEY

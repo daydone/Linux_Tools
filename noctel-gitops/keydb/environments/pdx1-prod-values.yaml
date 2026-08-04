@@ -1,0 +1,26 @@
+global:
+  namespace: prod
+
+keydb:
+    enabled: true
+    replicaCount: 3
+    aclEnabled: true
+    aclUsername: keydb-prod
+    multiMaster: true
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    externalLoadBalancerIP: 10.0.99.160
+    metalLBPool: prod-vlan-pool
+    persistence:
+      size: 20Gi
+    # Fastlock crashloop mitigation (2026-08-03). KeyDB 6.3.3's
+    # multi-threaded async event loop hits "fastlock lock/unlock
+    # mismatch for: AE (global)" under prod write pressure and
+    # SIGSEGVs in worker threads (exitCode 139 in sdsdup). keydb-1
+    # crashed 57x in ~5h chasing this after the morning recovery.
+    # server-threads=1 disables the multi-threaded AE and dodges
+    # the bug at a throughput cost we can afford; dev/qa keep
+    # threads=4 via the chart default. Revisit when a KeyDB
+    # version bump / fork migration lands.
+    serverThreads: 1
+    threads: 1

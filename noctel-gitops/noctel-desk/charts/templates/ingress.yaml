@@ -1,0 +1,32 @@
+{{- if index .Values "noctel-desk" "ingress" "enabled" }}
+{{- /*
+  Hostnames the Ingress accepts. Two ways to specify:
+    - hosts: [a.example.com, b.example.com]   (preferred, multi-host)
+    - host: a.example.com                     (legacy, single host)
+  When `hosts` is provided it wins; otherwise we promote `host` into a
+  one-element list so the iteration below works for both shapes.
+*/}}
+{{- $ing := index .Values "noctel-desk" "ingress" -}}
+{{- $hosts := $ing.hosts -}}
+{{- if not $hosts -}}{{- $hosts = list $ing.host -}}{{- end -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Chart.Name }}-ingress
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: {{ printf "Host(`%s`)" (join "`) || Host(`" $hosts) | quote }}
+      services:
+        - name: {{ .Chart.Name }}
+          port: 80
+  tls:
+    certResolver: dnsmadeeasy
+    domains:
+      {{- range $h := $hosts }}
+      - main: {{ $h }}
+      {{- end }}
+{{- end }}

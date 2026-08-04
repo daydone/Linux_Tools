@@ -1,0 +1,116 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pod-health-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+    component: kubernetes
+spec:
+  groups:
+  - name: pod-health.rules
+    interval: 30s
+    rules:
+
+    # Pod count surge detection - 10% rise in 15 minutes
+    - alert: PodCountSurgeDetected
+      expr: |
+        (count(kube_pod_info{namespace!~"kube-.*"}) - count(kube_pod_info{namespace!~"kube-.*"} offset 15m))
+        / count(kube_pod_info{namespace!~"kube-.*"} offset 15m) > 0.1
+      for: 3m
+      severity: critical
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "Pod count increased >10% in 15 minutes ({{ $value | humanizePercentage }})"
+        description: "Pod surge detected. Current: {{ (count(kube_pod_info{namespace!~\"kube-.*\"})) | humanize }}, 15min ago: {{ (count(kube_pod_info{namespace!~\"kube-.*\"} offset 15m)) | humanize }}. Check for: secret reloads, failed scheduling, deployment loops, hostPort conflicts."
+
+    # Scheduler rejections - pods stuck in Failed state
+    - alert: PodSchedulerRejectionBurst
+      expr: |
+        increase(kube_pod_status_phase{phase="Failed"}[5m]) > 100
+      for: 5m
+      severity: critical
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "{{ $value | humanize }} pods failed scheduling in 5 minutes"
+        description: "Scheduler rejecting pods. Check for hostPort conflicts, resource exhaustion, or node issues. Investigate: kubectl get pods -n prod --field-selector=status.phase=Failed"
+
+    # API server latency spike - indicates control plane stress
+    - alert: KubeApiserverLatencyHigh
+      expr: |
+        histogram_quantile(0.99, rate(apiserver_request_duration_seconds_bucket[5m])) > 1
+      for: 2m
+      severity: warning
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "API server p99 latency high: {{ $value | humanizeDuration }}"
+        description: "API server struggling with large number of requests (e.g., listing/deleting 10K+ pods). Control plane degradation imminent."
+
+    # Failed pods stuck in termination - not being cleaned up
+    - alert: StuckFailedPodsNotCleaning
+      expr: |
+        kube_pod_status_phase{phase="Failed"} > 50
+        and
+        rate(kube_pod_status_phase{phase="Failed"}[10m]) == 0
+      for: 15m
+      severity: warning
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "{{ $value | humanize }} Failed pods not being cleaned up"
+        description: "Failed pods accumulating without cleanup. May indicate: GC paused, etcd issues, or API server overload. Manual cleanup may be needed: kubectl delete pods --field-selector=status.phase=Failed -A"
+
+    # hostPort exhaustion - port already bound
+    - alert: HostPortExhausted
+      expr: |
+        sum by (node) (rate(kubelet_network_bind_failures_total[5m])) > 0
+      for: 5m
+      severity: critical
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "Node {{ $labels.node }} hostPort bind failures"
+        description: "Unable to bind hostPort (likely already in use by previous pod). Check: kubectl get pods -A -o wide | grep {{ $labels.node }}, identify stuck pods, and delete them."
+
+    # Pod phase distribution anomaly - too many pending
+    - alert: HighNumberOfPendingPods
+      expr: |
+        count(kube_pod_status_phase{phase="Pending"}) > 50
+        and
+        count(kube_pod_status_phase{phase="Pending"}) / count(kube_pod_info) > 0.1
+      for: 10m
+      severity: warning
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "{{ $value | humanize }} pods pending (>10% of total)"
+        description: "High number of pending pods. Check scheduler logs, node capacity, and for scheduling errors."
+
+    # etcd latency spike - backend bottleneck
+    - alert: EtcdLatencyHigh
+      expr: |
+        histogram_quantile(0.99, rate(etcd_disk_backend_commit_duration_seconds_bucket[5m])) > 0.5
+      for: 5m
+      severity: warning
+      labels:
+        component: etcd
+      annotations:
+        summary: "etcd commit latency high: {{ $value | humanizeDuration }}"
+        description: "etcd backend is slow, likely from excessive API server load. This cascades to control plane slowdown."
+
+    # Deployment stuck creating new pods without backoff
+    - alert: DeploymentReplicaMismatch
+      expr: |
+        kube_deployment_spec_replicas != kube_deployment_status_replicas_available
+        and
+        (kube_deployment_status_replicas - kube_deployment_status_replicas_available) / kube_deployment_spec_replicas > 0.5
+      for: 15m
+      severity: warning
+      labels:
+        component: kubernetes
+      annotations:
+        summary: "Deployment {{ $labels.deployment }} replicas unavailable (>50%)"
+        description: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} unable to schedule replicas. May indicate: pod scheduling failures, resource constraints, or persistent issues."

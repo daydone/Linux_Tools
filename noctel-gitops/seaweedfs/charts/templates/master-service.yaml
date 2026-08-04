@@ -1,0 +1,41 @@
+{{- if index .Values "seaweedfs" "deployMaster" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-master
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-master
+    component: master
+spec:
+  clusterIP: None
+  ports:
+  - name: master
+    port: 9333
+    targetPort: 9333
+  - name: grpc
+    port: 19333
+    targetPort: 19333
+  selector:
+    app: {{ .Chart.Name }}-master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-master-client
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-master
+    component: master
+spec:
+  type: ClusterIP
+  ports:
+  - name: master
+    port: 9333
+    targetPort: 9333
+  - name: grpc
+    port: 19333
+    targetPort: 19333
+  selector:
+    app: {{ .Chart.Name }}-master
+{{- end }}

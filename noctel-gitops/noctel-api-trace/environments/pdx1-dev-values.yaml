@@ -1,0 +1,36 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-trace:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7370"
+    HEALTH_PORT: "9370"
+    SERVICE_NAME: trace
+    CACHE_FILL_ENABLED: "true"
+    # Per-region ClickHouse cluster map. Region = geography (pdx, man),
+    # NOT NocTel cluster (pdx1 + pdx2 share clickhouse-pdx). See
+    # project_clickhouse_per_region_federated.md. Until the CH clusters
+    # land we ship an empty map; the read paths fall back cleanly to
+    # KeyDB-only mode for /trace/calls/active and return 503 from
+    # /trace/calls historical search.
+    # CLICKHOUSE_HOSTS keeps the region map shape; credentials embed in
+    # each URL (matches AMQP_URL / REDIS_URL convention). Until the CH
+    # clusters land we ship an empty map; reads fall back to KeyDB and
+    # historical search returns 503.
+    CLICKHOUSE_HOSTS: "{}"
+    CLICKHOUSE_QUERY_TIMEOUT_MS: "10000"
+    CLICKHOUSE_FAN_TIMEOUT_MS: "15000"
+    TRACE_IMPORT_EXCHANGE: "sip.trace"
+    STORAGE_API_URL: "http://noctel-api-storage:7170"
+  secrets:
+    # When CH clusters land, set CLICKHOUSE_HOSTS to the region→URL map
+    # with credentials embedded (http://noctel_reader:PASS@host:8123) via
+    # noctel-api-secrets. No separate CLICKHOUSE_USER/PASSWORD.

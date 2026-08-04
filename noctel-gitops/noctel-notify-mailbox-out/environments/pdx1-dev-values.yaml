@@ -1,0 +1,18 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-notify-mailbox-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9218"
+    KAMAILIO_HTTP_URL: "http://kamailio.dev.svc.cluster.local:8080"
+    KAMAILIO_MWI_PATH: "/mwi/notify"
+    SERVICE_NAME: noctel-notify-mailbox-out
+  secrets:

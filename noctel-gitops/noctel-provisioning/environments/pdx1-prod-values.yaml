@@ -1,0 +1,37 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-provisioning:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  env:
+    PORT: "7361"
+    HEALTH_PORT: "9361"
+    SERVICE_NAME: noctel-provisioning
+    # Reachable on the stable MetalLB address 10.0.99.156:7361 (see
+    # service.yaml). Point the noctel-haproxy provisioning backend +
+    # prod DNS (p.noc.tel) at that IP. Device-facing routes still 503
+    # until the HA1 migration + PKI / never-brick template prereqs
+    # complete in prod.
+    #
+    # SIP registration target (SRV zone phones resolve), NOT the auth realm.
+    # PENDING DNS (must be live before prod go-live / promotion):
+    #   _sip._udp.talk.noctel.net  IN SRV 100 100 5060 <prod-sbc>.talk.noctel.net
+    #   <prod-sbc>.talk.noctel.net IN A   <prod sbc SIP IP>
+    # Port 0 = the phone does the _sip._udp SRV lookup (UDPOnly). Prod is
+    # manual-promote, so this takes effect only when prod is deployed.
+    SIP_DOMAIN: talk.noctel.net
+    SIP_TRANSPORT: UDPOnly
+    SIP_REGISTRAR_PORT: "0"
+    # One platform realm, fixed in every env (here the realm and SRV zone are the
+    # same string, but they serve different roles: 401 challenge vs SRV lookup).
+    SIP_REALM: talk.noctel.net

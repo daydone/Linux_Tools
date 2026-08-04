@@ -1,0 +1,36 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-provisioning:
+  version: "latest"
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  env:
+    PORT: "7361"
+    HEALTH_PORT: "9361"
+    SERVICE_NAME: noctel-provisioning
+    # Reachable on the stable MetalLB address 10.0.97.156:7361 (see
+    # service.yaml). Point the noctel-haproxy provisioning backend +
+    # dev DNS (p.telnoc.com) at that IP. Device-facing routes still
+    # return 503 until the HA1-migrated templates land; desk
+    # preview/download already works against this address.
+    #
+    # SIP registration target (SRV zone phones resolve), NOT the auth realm.
+    # PENDING DNS: load the dev SRV before phones provision against this zone:
+    #   _sip._udp.talk.telnoc.com  IN SRV 100 100 5060 <dev-sbc>.talk.telnoc.com
+    #   <dev-sbc>.talk.telnoc.com  IN A   <dev sbc SIP IP>
+    # Port 0 = the phone does the _sip._udp SRV lookup (UDPOnly).
+    SIP_DOMAIN: talk.telnoc.com
+    SIP_TRANSPORT: UDPOnly
+    SIP_REGISTRAR_PORT: "0"
+    # One platform realm, fixed in every env (opaque 401 key; distinct from the
+    # SRV zone so one HA1 authenticates a device anywhere).
+    SIP_REALM: talk.noctel.net

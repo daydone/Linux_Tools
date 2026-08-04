@@ -1,0 +1,208 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  chirpstack.toml: |
+    # TEMPORARY: bumped from "info" to "trace" 2026-05-18 to diagnose
+    # the lapin AMQP integration publishing-but-not-routing issue.
+    # ChirpStack's config-driven log level wins over RUST_LOG, so the
+    # only knob is here. Revert to "info" once the AMQP path is fixed.
+    [logging]
+    level="info"
+
+    [postgresql]
+    dsn="postgres://{{ index .Values "chirpstack-core" "config" "database" "user" }}:{{ index .Values "chirpstack-core" "config" "database" "password" }}@{{ index .Values "chirpstack-core" "config" "database" "host" }}:{{ index .Values "chirpstack-core" "config" "database" "port" }}/{{ index .Values "chirpstack-core" "config" "database" "name" }}?sslmode=disable"
+
+    [redis]
+    servers=[
+      "{{ index .Values "chirpstack-core" "config" "redis" "url" }}",
+    ]
+    cluster=false
+
+    [network]
+    net_id_to_dev_addr_prefix={1="000000/1"}
+    # LoRaWAN regions ChirpStack will accept devices + uplinks for.
+    # Each name MUST match a [[regions]] block — either inline here,
+    # in a sibling region_<name>.toml file in the same config dir
+    # (auto-loaded by ChirpStack), or both. Without an entry here
+    # the region is invisible: empty regions list in the UI, empty
+    # device-profile-templates list (templates are region-scoped),
+    # and the chirp-out worker's device-profile upserts fail
+    # silently against an unknown region.
+    #
+    # Only us915_1 enabled. All NocTel-shipped hardware (RAK7268V2,
+    # RAK7201V2, Seeed T1000-E) operates on US915 sub-band 1 by
+    # default (channels 8-15, 903.9-905.3 MHz). us915_0 was kept
+    # enabled briefly during the v4.7 cutover for safety but never
+    # received traffic; removing it now prevents an operator from
+    # accidentally selecting it in the device-profile UI and
+    # silently bricking the next provisioning run. Re-enable
+    # us915_0 (and add a sub-band picker on the device-type catalog)
+    # when a real sub-band-0 deployment lands.
+    enabled_regions=["us915_1"]
+
+    [api]
+    bind="0.0.0.0:8080"
+
+    # Event integrations.
+    #
+    # We run BOTH:
+    #  - mqtt:    legacy + downlink scheduling path. Mosquitto runs in
+    #             the cluster and is still required for gateway-bridge
+    #             traffic; ChirpStack will keep publishing application
+    #             events there too. Backwards-compatible with anything
+    #             still attached to mosquitto.
+    #  - amqp:    primary event feed for noctel-api-chirp-in, which
+    #             consumes from the `chirp-in` queue on the platform
+    #             RabbitMQ. Routing-key shape `application.{app_uuid}.
+    #             device.{dev_eui}.event.{event_type}` matches the
+    #             pattern chirp-in binds to.
+    #
+    # RabbitMQ connection URL is rendered at pod start by the
+    # render-config initContainer (see deployment.yaml). The init
+    # exports AMQP_URL_NORMALIZED with an explicit URL-encoded
+    # default vhost (`/%2F`) — ChirpStack 4.7's lapin client refuses
+    # a bare-trailing-slash URL ("vhost  not found"), unlike Node-
+    # land amqplib which silently treats it as the default vhost.
+    # We're still on the default vhost like every other service;
+    # this just spells it out for the strict parser. Long-term we
+    # should move ChirpStack onto a dedicated `/chirpstack` vhost
+    # so its namespace is isolated from the platform queues.
+    # Credential stays in noctel-api-secrets, never on the
+    # configmap.
+    [integration]
+    enabled=["mqtt", "amqp"]
+
+    [integration.mqtt]
+    # ChirpStack v4 requires a URL scheme on the MQTT server URL
+    # (tcp:// or ssl://). Bare host:port crashes the pod at boot with
+    # "Unsupported URL scheme". This guard prepends tcp:// when the
+    # value doesn't already have a scheme so a missed env-file edit
+    # can't take down the LNS plane.
+    {{- $mqttServer := index .Values "chirpstack-core" "config" "mqtt" "server" }}
+    {{- if not (regexMatch "^[a-z]+://" $mqttServer) }}
+    {{- $mqttServer = printf "tcp://%s" $mqttServer }}
+    {{- end }}
+    server="{{ $mqttServer }}"
+
+    [integration.amqp]
+    url="${AMQP_URL_NORMALIZED}"
+    # ChirpStack 4.7.0 switched the AMQP integration's routing-key
+    # template engine from Go-template (dot-prefixed fields) to
+    # Handlebars (no dot) — the old leading dot now fails parser
+    # validation at boot with "invalid handlebars syntax" and the
+    # whole process exits. See chirpstack/chirpstack release-4.7.0
+    # notes. The Helm escape on the line below keeps the braces
+    # literal so they reach ChirpStack as Handlebars tokens.
+    #
+    # Field names are snake_case (application_id, dev_eui,
+    # event_type) NOT PascalCase. v4's Handlebars context uses
+    # snake_case everywhere (matches the per-region gateway
+    # backend's command_topic_template). Old PascalCase tokens
+    # silently rendered as empty strings so every event was
+    # published with routing_key 'application..device..event.'
+    # (chirp-in still matched via 'application.#' but lost all
+    # routing metadata and prevented narrower per-event-type or
+    # per-device bindings).
+    # (Avoiding double curly braces in this comment intentionally:
+    # Helm scans every line of the template for braces and would
+    # otherwise try to evaluate them as Go template functions.)
+    # The Handlebars variable for the event name in ChirpStack 4.7 is
+    # `event` (NOT `event_type` — that name renders as empty). The
+    # previous `event_type` rendered to nothing, leaving a trailing
+    # dot in every routing key (application.<id>.device.<eui>.event.).
+    # chirp-in's `application.#` binding should tolerate that, but in
+    # practice messages weren't reaching the queue. Switching to
+    # `event` yields a clean `...event.up` suffix and removes the
+    # ambiguity entirely.
+    # (Curly-brace tokens in this comment are deliberately written
+    # bare — Helm pre-scans every comment line and would otherwise
+    # try to evaluate any double-brace pair as a Go template function
+    # and abort the manifest render.)
+    event_routing_key="application.{{`{{application_id}}`}}.device.{{`{{dev_eui}}`}}.event.{{`{{event}}`}}"
+    # Bind to the existing chirpstack-events exchange so the queue
+    # `chirp-in` (declared by noctel-api-chirp-in at boot) can be
+    # bound to `application.#` and drain everything. The exchange is
+    # created on first publish if absent.
+    event_exchange="chirpstack-events"
+
+  # ────────────────────────────────────────────────────────────────
+  # Region: US915 sub-band 1 (channels 8-15 + 500 kHz channel 65).
+  # ────────────────────────────────────────────────────────────────
+  # ChirpStack v4 auto-loads every *.toml file in the config dir, so
+  # this lands at /etc/chirpstack/region_us915_1.toml at pod start
+  # alongside the main chirpstack.toml above. The render-config
+  # initContainer envsubst's every .toml in the template dir;
+  # region files have no placeholders so it's a passthrough.
+  #
+  # Sub-band 1 is what every NocTel-shipped LoRaWAN device
+  # (RAK7268V2 gateways, RAK7201V2 buttons, Seeed T1000-E trackers)
+  # operates on out of the box: eight uplink channels at 903.9-905.3 MHz
+  # plus the 500 kHz uplink at channel 65 (904.6 MHz), and a
+  # platform-wide RX2 at 923.3 MHz (US915-wide, not sub-band-specific).
+  region_us915_1.toml: |
+    [[regions]]
+    name="us915_1"
+    description="US915 sub-band 1 (channels 8-15, RX2 923.3 MHz)"
+    common_name="US915"
+    user_info="LoRaWAN US915 region, sub-band 1 (channels 8-15 plus the 500 kHz uplink channel 65). Default sub-band for NocTel-shipped hardware; pair with gateways tuned to 903.9-905.3 MHz."
+
+      [regions.network]
+      installation_margin=10
+      rx_window=0
+      rx1_delay=1
+      rx1_dr_offset=0
+      rx2_dr=8
+      rx2_frequency=923300000
+      uplink_max_eirp=30
+      adr_disabled=true
+      enabled_uplink_channels=[8,9,10,11,12,13,14,15]
+
+        [regions.network.class_b]
+        ping_slot_dr=8
+        ping_slot_frequency=923300000
+
+        [regions.network.rejoin_request]
+        enabled=false
+
+      [regions.gateway]
+      force_gws_private=false
+
+        [regions.gateway.backend]
+        enabled="mqtt"
+
+          [regions.gateway.backend.mqtt]
+          # MQTT broker for this region's gateway plane. ChirpStack v4
+          # opens a SEPARATE MQTT connection per region for gateway-
+          # bridge traffic (distinct from [integration.mqtt] above
+          # which carries application/device events). Without an
+          # explicit `server` here, ChirpStack falls back to
+          # tcp://127.0.0.1:1883 and crashloops with "Connection
+          # refused" because there's no mosquitto on pod loopback.
+          # Pulled from the same chart value as [integration.mqtt];
+          # reuses the same scheme-prepend guard.
+          {{- $reg1MqttServer := index .Values "chirpstack-core" "config" "mqtt" "server" }}
+          {{- if not (regexMatch "^[a-z]+://" $reg1MqttServer) }}
+          {{- $reg1MqttServer = printf "tcp://%s" $reg1MqttServer }}
+          {{- end }}
+          server="{{ $reg1MqttServer }}"
+
+          # us915_1 topic prefix. Matches what
+          # chirpstack-gateway-bridge publishes when its region
+          # config / concentrator is tuned to sub-band 1 (this is
+          # the production gateway-bridge config in pdx-prod).
+          event_topic="us915_1/gateway/+/event/+"
+          command_topic_template="us915_1/gateway/{{`{{ gateway_id }}`}}/command/{{`{{ command }}`}}"
+          # v4_migrate=false: publish downlinks to the prefixed v4
+          # topic (us915_1/gateway/.../command/down) that our
+          # chirpstack-gateway-bridge actually subscribes to.
+          # When true, chirpstack-core publishes to the UNPREFIXED
+          # v3-legacy topic (gateway/.../command/down) with Legacy
+          # protobuf fields for backwards-compat with v3 bridges.
+          # We're a pure v4 deployment; the prior v4_migrate=true
+          # silently broke every OTAA JoinAccept (manifested
+          # 2026-05-17 as B4 RX_TIMEOUT — uplinks reached core,
+          # JoinAccept was published, bridge never saw the topic).
+          v4_migrate=false

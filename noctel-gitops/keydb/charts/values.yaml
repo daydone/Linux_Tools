@@ -1,0 +1,84 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+keydb:
+  enabled: true
+  replicaCount: 2
+  # Pre-allocate --replicaof slots up to this ordinal so the
+  # active-replica mesh self-heals when you `kubectl scale sts keydb
+  # --replicas=N` without rolling-restarting existing pods. Set above
+  # any plausible replicaCount you'd grow to (8–10× headroom is fine
+  # — KeyDB tolerates unreachable peers gracefully). Bump if you
+  # genuinely scale past it; the only effect of an over-spec is a
+  # handful of unused replication slots logged as link-down.
+  maxPeers: 10
+  image:
+    repository: eqalpha/keydb
+    tag: "x86_64_v6.3.3"
+    pullPolicy: IfNotPresent
+
+  # Prometheus metrics sidecar. Disabled by default 2026-06-03 until
+  # the dockerhub-secret auth issue is resolved (image pull returns
+  # "insufficient_scope: authorization failed" on new pod creation).
+  # The exporter only feeds grafana dashboards; main KeyDB traffic
+  # doesn't depend on it. Re-enable per-env once auth is fixed.
+  exporter:
+    enabled: false
+    image: prometheuscommunity/redis-exporter:latest
+    imagePullPolicy: IfNotPresent
+
+  # Sized for 4GB maxmemory with 30% headroom for COW (copy-on-write)
+  # during AOF rewrites and fork operations. 5.2Gi limit provides ~1.2Gi
+  # buffer above 4GB maxmemory to prevent OOMKill during peak fork RSS.
+  # This eliminates the eviction issues observed in QA (437k evicted keys)
+  # and ensures safe operation under high write churn and full resyncs.
+  # CPU 2000m lets server-threads=4 burst during rewrites so fork
+  # lifetimes stay short (less COW accumulation).
+  resources:
+    requests:
+      cpu: 500m
+      memory: 4Gi
+    limits:
+      cpu: 2000m
+      memory: 8Gi
+
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: longhorn
+
+  # KeyDB active-replication configuration
+  activeReplica: true
+  multiMaster: true
+
+  # Server configuration. KeyDB's selling point over Redis is true
+  # multi-threading; running with >1 thread is what we paid for.
+  # Bumped from 2 to 4 — bgsave forks are CPU-bound while the
+  # parent serves traffic, so extra threads keep p99 latency
+  # tolerable during snapshots.
+  port: 6379
+  threads: 4
+  serverThreads: 4
+
+  # External nodes for multi-cluster setup
+  # Format: "host:port"
+  externalNodes: []
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 6379
+    annotations: {}
+
+  # Headless service for StatefulSet
+  headlessService:
+    port: 6379
+
+  # TCP Ingress via Traefik
+  ingress:
+    enabled: false
+    host: ""  # e.g., pdx1-dev-keydb.telnoc.com
+    port: 6379  # External port on Traefik LoadBalancer

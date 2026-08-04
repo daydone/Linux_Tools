@@ -1,0 +1,92 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: keydb-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+    component: keydb
+spec:
+  groups:
+  - name: keydb.rules
+    interval: 30s
+    rules:
+
+    # ── Memory pressure ───────────────────────────────────────────────
+    # Alert thresholds are dynamic: calculated as a % of redis_memory_max_bytes
+    # (the configured maxmemory), so they auto-scale if maxmemory changes.
+    # Alerts fire before the pod memory limit (5.2Gi) is hit.
+    - alert: KeyDBMemoryPressure
+      expr: |
+        redis_memory_used_bytes / redis_memory_max_bytes > 0.75
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "KeyDB {{ $labels.pod }} memory >75% of configured limit"
+        description: |
+          {{ $labels.pod }} in {{ $labels.namespace }} is using {{ $value | humanizePercentage }}
+          of its configured maxmemory ({{ with query "redis_memory_max_bytes{pod=~\"keydb-.*\"}" }}{{ . | humanize1024 }}B{{ end }}).
+          Memory pressure detected. If >80%, evictions will occur.
+          kubectl exec -n {{ $labels.namespace }} {{ $labels.pod }} -c keydb -- keydb-cli INFO memory
+
+    - alert: KeyDBMemoryCritical
+      expr: |
+        redis_memory_used_bytes / redis_memory_max_bytes > 0.90
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "KeyDB {{ $labels.pod }} memory >90% of configured limit"
+        description: |
+          {{ $labels.pod }} in {{ $labels.namespace }} is using {{ $value | humanizePercentage }}
+          of its configured maxmemory. Approaching pod limit (5.2Gi).
+          Heavy eviction is degrading latency. Reduce dataset or increase maxmemory now.
+
+    # ── Node availability ─────────────────────────────────────────────
+    - alert: KeyDBNodeNotReady
+      expr: |
+        kube_statefulset_status_replicas_ready{statefulset="keydb"}
+          < kube_statefulset_replicas{statefulset="keydb"}
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "KeyDB has an unready node in {{ $labels.namespace }}"
+        description: |
+          {{ $value }} of the desired KeyDB replicas are ready in {{ $labels.namespace }}.
+          Active-active replication and read capacity are degraded.
+          kubectl get pods -n {{ $labels.namespace }} -l app=keydb
+
+    # ── Eviction policy + rate (DORMANT until the redis-exporter is back) ─
+    # These need the prometheuscommunity/redis-exporter sidecar, which was
+    # disabled 2026-06-03 on a Docker Hub pull failure (keydb chart values
+    # keydb.exporter.enabled=false). They produce no series until it is
+    # re-enabled with a pullable (Harbor-mirrored) image — at which point
+    # they activate automatically. They directly catch the two root causes
+    # of the 2026-06-09 incident: a wrong eviction policy and runaway evictions.
+    - alert: KeyDBWrongEvictionPolicy
+      expr: |
+        redis_config_maxmemory_policy{maxmemory_policy!="volatile-lru"} == 1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "KeyDB {{ $labels.namespace }} maxmemory-policy is not volatile-lru"
+        description: |
+          KeyDB is running maxmemory-policy={{ $labels.maxmemory_policy }}, not volatile-lru.
+          allkeys-lru evicts persistent live-state keys under pressure and breaks desk
+          propagation. Fix the config (keydb/charts/templates/configmap.yaml) and re-sync.
+
+    - alert: KeyDBHighEvictionRate
+      expr: |
+        increase(redis_evicted_keys[1h]) > 1000
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "KeyDB {{ $labels.pod }} evicting {{ $value | humanize }} keys/hr"
+        description: |
+          KeyDB {{ $labels.pod }} in {{ $labels.namespace }} is evicting >1000 keys/hour.
+          High eviction rate indicates undersized cache. Increase maxmemory or reduce dataset.
+          This caught the QA incident: 437k keys/day = ~18k/hr ≫ 1000 threshold.

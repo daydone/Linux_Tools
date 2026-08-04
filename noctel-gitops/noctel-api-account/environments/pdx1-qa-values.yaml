@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-api-account:
+  version: "latest"
+  replicaCount: 3
+  env:
+    # Public desk URL embedded in verify-email, password-reset, and
+    # accept-invitation links the service emails out. Must be the
+    # public hostname so external recipients can click through; the
+    # internal pdx1-qa-desk.mocktel.com isn't reachable outside the VPN.
+    FRONTEND_URL: "https://desk.mocktel.com"

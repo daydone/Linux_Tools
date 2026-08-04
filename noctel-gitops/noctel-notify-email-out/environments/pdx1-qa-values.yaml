@@ -1,0 +1,33 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-notify-email-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9201"
+    # In-pod Postfix sidecar pattern. The worker hands SMTP off to
+    # the postfix process running inside the same container; explicit
+    # localhost. Without SMTP_HOST the worker throws
+    # "SMTP_HOST is required (set explicitly to 127.0.0.1 for in-container postfix)"
+    # on every dispatch and retries forever.
+    SMTP_HOST: "127.0.0.1"
+    # POSTAL_API_URL / POSTAL_SERVER_KEY removed — we deliver via the
+    # in-pod Postfix sidecar (SMTP_HOST=127.0.0.1 above), not via the
+    # Postal HTTP API. The placeholder POSTAL_SERVER_KEY also leaked
+    # the literal string "placeholder-set-in-secret" into the pod env
+    # via the platform configmap, which was confusing.
+    SMTP_FROM: "notifications@noctel.com"
+    SMTP_FROM_NAME: "NocTel Notifications"
+    SMTP_BOUNCE_DOMAIN: "bounces.noctel.com"
+    SERVICE_NAME: noctel-notify-email-out
+  egressGateway:
+    enabled: true
+    egressIP: "10.0.98.152"
+  secrets:

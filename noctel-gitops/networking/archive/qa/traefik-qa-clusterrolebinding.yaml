@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    meta.helm.sh/release-name: traefik-qa
+    meta.helm.sh/release-namespace: qa
+  labels:
+    app.kubernetes.io/instance: traefik-qa-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: traefik
+    helm.sh/chart: traefik-37.0.0
+  name: traefik-qa-qa
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-qa-qa
+subjects:
+- kind: ServiceAccount
+  name: traefik-qa
+  namespace: qa

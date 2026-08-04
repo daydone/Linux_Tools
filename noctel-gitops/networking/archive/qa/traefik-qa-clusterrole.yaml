@@ -1,0 +1,84 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  annotations:
+    meta.helm.sh/release-name: traefik-qa
+    meta.helm.sh/release-namespace: qa
+  labels:
+    app.kubernetes.io/instance: traefik-qa-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: traefik
+    helm.sh/chart: traefik-37.0.0
+  name: traefik-qa-qa
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - nodes
+  - secrets
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - ingressclasses
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingressclasses
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - traefik.io
+  resources:
+  - ingressroutes
+  - ingressroutetcps
+  - ingressrouteudps
+  - middlewares
+  - middlewaretcps
+  - serverstransports
+  - serverstransporttcps
+  - tlsoptions
+  - tlsstores
+  - traefikservices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses/status
+  verbs:
+  - update
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - ingresses/status
+  verbs:
+  - update

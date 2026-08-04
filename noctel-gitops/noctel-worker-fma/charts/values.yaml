@@ -1,0 +1,62 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+# noctel-worker-fma carves the synchronous FaxBack DeliverImage path out
+# of noctel-api-fma (which is now CRUD-only). It also takes over the
+# FaxBack httpservice.api status poller. Pairs with the API's thin
+# webhook surface.
+noctel-worker-fma:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-worker-fma
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    # AMQP — shared exchange across the fax pipeline.
+    - name: AMQP_EXCHANGE
+      value: "noctel.fax"
+    - name: AMQP_QUEUE_DELIVER
+      value: "fma.deliver"
+    - name: AMQP_DLQ_DELIVER
+      value: "fma.deliver.dlq"
+    - name: AMQP_PREFETCH
+      value: "10"
+    # KeyDB namespace shared with noctel-api-fma's status reader.
+    - name: REDIS_KEY_PREFIX
+      value: "fma:"
+    # Worker tuning.
+    - name: WORKER_CONCURRENCY
+      value: "4"
+    - name: RETRY_ATTEMPTS
+      value: "3"
+    - name: RETRY_DELAY_MS
+      value: "30000"
+    # FaxBack status poller — enabled per default; per-env values can
+    # turn it off if a deployment doesn't own the FaxBack instance.
+    - name: FAXBACK_POLLING_ENABLED
+      value: "true"
+    - name: FAXBACK_POLL_INTERVAL
+      value: "60"
+    - name: FAXBACK_OFFLINE_THRESHOLD
+      value: "75"
+    # Health (per MICROSERVICES_PORTS.md generic worker range).
+    - name: HEALTH_PORT
+      value: "9293"
+
+  metrics:
+    enabled: false
+    port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

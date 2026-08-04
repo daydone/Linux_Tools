@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-exporter-config
+  namespace: monitoring
+data:
+  elasticsearch-address: "http://elasticsearch-es-http.prod.svc.cluster.local:9200"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-exporter
+  namespace: monitoring
+  labels:
+    app: elasticsearch-exporter
+spec:
+  ports:
+  - name: metrics
+    port: 9114
+    targetPort: 9114
+  selector:
+    app: elasticsearch-exporter
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch-exporter
+  namespace: monitoring
+  labels:
+    app: elasticsearch-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch-exporter
+  template:
+    metadata:
+      labels:
+        app: elasticsearch-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9114"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: elasticsearch-exporter
+      containers:
+      - name: exporter
+        image: prometheuscommunity/elasticsearch-exporter:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9114
+          name: metrics
+        env:
+        - name: ELASTICSEARCH_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: elasticsearch-exporter-config
+              key: elasticsearch-address
+        - name: ELASTICSEARCH_SSL_VERIFY
+          value: "false"
+        - name: ELASTICSEARCH_USERNAME
+          value: "elastic"
+        - name: ELASTICSEARCH_PASSWORD
+          value: "6nbnbvBFVI4QNAeDKhqm5mWI"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elasticsearch-exporter
+  namespace: monitoring

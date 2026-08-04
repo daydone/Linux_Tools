@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "noctel-api-fma" "version" }}
+spec:
+  replicas: {{ index .Values "noctel-api-fma" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: noctel
+        version: {{ index .Values "noctel-api-fma" "version" }}
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - noctel
+              topologyKey: kubernetes.io/hostname
+
+      imagePullSecrets:
+      - name: harbor-pull
+      - name: dockerhub-secret
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "pdx-harbor.telnoc.com/noctel/{{ .Chart.Name }}:{{ index .Values "noctel-api-fma" "version" }}"
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 7082
+          protocol: TCP
+        - name: health
+          containerPort: 9082
+          protocol: TCP
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- range $key, $value := index .Values "noctel-api-fma" "env" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-api-fma" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+  - name: http
+    port: 7082
+    targetPort: http
+  - name: health
+    port: 9082
+    targetPort: health

@@ -1,0 +1,33 @@
+{{- $sw := index .Values "seaweedfs" }}
+{{- $filerIngress := dict }}
+{{- if $sw.ingress }}
+{{- if $sw.ingress.filer }}
+{{- $filerIngress = $sw.ingress.filer }}
+{{- end }}
+{{- end }}
+{{- if and $sw.deployFiler (index $filerIngress "enabled") }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ index $filerIngress "name" | default "seaweedfs-filer-ingress" }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  ingressClassName: {{ index $filerIngress "ingressClassName" | default "traefik" }}
+  rules:
+  {{- range index $filerIngress "hosts" }}
+  - host: {{ .host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: seaweedfs-filer-ui
+            port:
+              number: 8888
+  {{- end }}
+  {{- with index $filerIngress "tls" }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

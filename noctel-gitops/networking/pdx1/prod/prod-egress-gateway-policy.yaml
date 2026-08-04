@@ -1,0 +1,27 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: prod-egress-to-external
+spec:
+  # Select all pods in prod namespace
+  selectors:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: prod
+
+  # Route all external traffic through the prod VLAN gateway
+  destinationCIDRs:
+  - "0.0.0.0/0"
+
+  # Don't SNAT internal cluster traffic
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "10.42.0.0/16"
+  - "10.43.0.0/16"
+
+  # Route through prod VLAN gateway
+  egressGateway:
+    egressIP: "10.0.99.10"
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"

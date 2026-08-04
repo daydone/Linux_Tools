@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-layer-overview-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: grafana
+data:
+  data-layer-overview.json: |
+    {
+      "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+      "description": "Data Layer Overview - All Systems at a Glance",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "gnetId": null,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [
+        {"asDropdown": false, "icon": "bolt", "includeVars": false, "title": "KeyDB Cluster", "type": "link", "url": "/d/keydb-cluster/keydb-cluster"},
+        {"asDropdown": false, "icon": "bolt", "includeVars": false, "title": "RabbitMQ Cluster", "type": "link", "url": "/d/rabbitmq-cluster/rabbitmq-cluster"},
+        {"asDropdown": false, "icon": "bolt", "includeVars": false, "title": "Elasticsearch Cluster", "type": "link", "url": "/d/elasticsearch-cluster/elasticsearch-cluster"}
+      ],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"hideFrom": {"tooltip": false, "viz": false, "legend": false}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 6, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "up{job=\"keydb\"}", "legendFormat": "", "refId": "A"}],
+          "title": "KeyDB Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"hideFrom": {"tooltip": false, "viz": false, "legend": false}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 6, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "up{job=\"rabbitmq\"}", "legendFormat": "", "refId": "A"}],
+          "title": "RabbitMQ Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"hideFrom": {"tooltip": false, "viz": false, "legend": false}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 6, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "elasticsearch_cluster_health_status", "legendFormat": "", "refId": "A"}],
+          "title": "Elasticsearch Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "inspect": false}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}}},
+          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 6},
+          "id": 4,
+          "options": {"footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false}, "showHeader": true, "sortBy": [{"displayName": "System", "desc": false}]},
+          "pluginVersion": "10.0.0",
+          "targets": [
+            {"expr": "label_replace(up{job=\"keydb\"}, \"system\", \"KeyDB\", \"\", \"\") | label_replace(., \"metric\", \"Status\", \"\", \"\")", "format": "table", "instant": true, "refId": "A"},
+            {"expr": "label_replace((sum(redis_memory_used_bytes) / 1500000000) * 100, \"system\", \"KeyDB\", \"\", \"\") | label_replace(., \"metric\", \"Memory %\", \"\", \"\")", "format": "table", "instant": true, "refId": "B"},
+            {"expr": "label_replace(sum(rabbitmq_queue_messages_ready), \"system\", \"RabbitMQ\", \"\", \"\") | label_replace(., \"metric\", \"Queue Depth\", \"\", \"\")", "format": "table", "instant": true, "refId": "C"},
+            {"expr": "label_replace((sum(rabbitmq_process_resident_memory_bytes) / 2000000000) * 100, \"system\", \"RabbitMQ\", \"\", \"\") | label_replace(., \"metric\", \"Memory %\", \"\", \"\")", "format": "table", "instant": true, "refId": "D"},
+            {"expr": "label_replace(elasticsearch_unassigned_shards, \"system\", \"Elasticsearch\", \"\", \"\") | label_replace(., \"metric\", \"Unassigned Shards\", \"\", \"\")", "format": "table", "instant": true, "refId": "E"},
+            {"expr": "label_replace((sum(elasticsearch_jvm_memory_used_bytes{type=\"heap\"}) / sum(elasticsearch_jvm_memory_max_bytes{type=\"heap\"})) * 100, \"system\", \"Elasticsearch\", \"\", \"\") | label_replace(., \"metric\", \"JVM Memory %\", \"\", \"\")", "format": "table", "instant": true, "refId": "F"}
+          ],
+          "title": "Key Metrics",
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "percent"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [
+            {"expr": "(sum(redis_memory_used_bytes) / 1500000000) * 100", "legendFormat": "KeyDB Memory %", "refId": "A"},
+            {"expr": "(sum(rabbitmq_process_resident_memory_bytes) / 2000000000) * 100", "legendFormat": "RabbitMQ Memory %", "refId": "B"},
+            {"expr": "(sum(elasticsearch_jvm_memory_used_bytes{type=\"heap\"}) / sum(elasticsearch_jvm_memory_max_bytes{type=\"heap\"})) * 100", "legendFormat": "Elasticsearch JVM %", "refId": "C"}
+          ],
+          "title": "Memory Pressure (All Systems)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [
+            {"expr": "sum(rabbitmq_queue_messages_ready)", "legendFormat": "Queue Depth", "refId": "A"},
+            {"expr": "elasticsearch_unassigned_shards", "legendFormat": "Unassigned Shards", "refId": "B"},
+            {"expr": "rate(redis_evicted_keys_total[5m])", "legendFormat": "KeyDB Evictions/sec", "refId": "C"},
+            {"expr": "count(rabbitmq_queue_consumers == 0)", "legendFormat": "Queues with no consumers", "refId": "D"}
+          ],
+          "title": "Critical Metrics (Alert if High)",
+          "type": "timeseries"
+        }
+      ],
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": ["data-layer", "overview"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Data Layer Overview",
+      "uid": "data-layer-overview",
+      "version": 0
+    }

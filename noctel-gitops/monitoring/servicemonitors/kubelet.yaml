@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubelet
+  namespace: monitoring
+  labels:
+    component: kubelet
+spec:
+  selector:
+    matchLabels:
+      k3s-app: kubelet
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: "kubelet_(pod_worker_duration_seconds_bucket|pod_worker_duration_seconds_count)"
+      action: drop
+    honorLabels: true

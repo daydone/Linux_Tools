@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-api-fma
+description: noctel-api-fma - FaxBack ATA Connector integration
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

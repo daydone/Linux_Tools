@@ -1,0 +1,14 @@
+apiVersion: v2
+name: noctel-worker-chirp-out
+description: NocTel ChirpOut Service - LoRaWAN Network Server integration and device management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: NocTel
+    email: devops@noctel.com
+keywords:
+  - noctel
+  - lns
+  - lorawan
+  - iot

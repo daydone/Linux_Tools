@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: noctel-qa-api-ingress
+  namespace: qa
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: dnsmadeeasy
+spec:
+  ingressClassName: traefik-qa
+  rules:
+  - host: pdx2-qa-api.telnoc.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: noctel-api
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix
+  - host: pdx2-qa-api-int.telnoc.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: noctel-api
+            port:
+              number: 3000
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - pdx2-qa-api.telnoc.com
+    - pdx2-qa-api-int.telnoc.com

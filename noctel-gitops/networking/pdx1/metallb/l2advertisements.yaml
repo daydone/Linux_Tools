@@ -1,0 +1,63 @@
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: management-vlan-advertisement
+  namespace: metallb-system
+spec:
+  interfaces:
+  - bond0.675
+  ipAddressPools:
+  - management-vlan-pool
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/hostname: pdx1-kserver0
+  - matchLabels:
+      kubernetes.io/hostname: pdx1-kserver1
+  - matchLabels:
+      node-role.kubernetes.io/worker: "true"
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: dev-vlan-advertisement
+  namespace: metallb-system
+spec:
+  interfaces:
+  - bond0.677
+  ipAddressPools:
+  - dev-vlan-pool
+  nodeSelectors:
+  - matchLabels:
+      node-role.kubernetes.io/worker: "true"
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: qa-vlan-advertisement
+  namespace: metallb-system
+spec:
+  interfaces:
+  - bond0.678
+  ipAddressPools:
+  - qa-vlan-pool
+  nodeSelectors:
+  # Live state as imported 2026-07-27: qa announces from kworker0 only
+  # (predates the kworker0 pile-up cleanup). Widen to the worker role
+  # selector deliberately, not as a side effect of this import.
+  - matchLabels:
+      kubernetes.io/hostname: pdx1-kworker0
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: prod-vlan-advertisement
+  namespace: metallb-system
+spec:
+  interfaces:
+  - bond0.679
+  ipAddressPools:
+  - prod-vlan-pool
+  nodeSelectors:
+  - matchLabels:
+      node-role.kubernetes.io/worker: "true"

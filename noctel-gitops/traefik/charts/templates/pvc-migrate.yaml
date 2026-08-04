@@ -1,0 +1,57 @@
+{{- if .Values.traefik.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: traefik-{{ .Release.Name | replace "traefik-" "" }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    {{- range .Values.traefik.persistence.accessModes | default (list "ReadWriteMany") }}
+    - {{ . }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.traefik.persistence.size | default "1Gi" }}
+  storageClassName: {{ .Values.traefik.persistence.storageClass | default "longhorn" }}
+---
+{{- if .Values.traefik.persistence.migrate }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: traefik-{{ .Release.Name | replace "traefik-" "" }}-pvc-migrate
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: traefik-{{ .Release.Namespace }}
+      restartPolicy: Never
+      containers:
+      - name: migrate
+        image: busybox:1.36
+        command:
+        - sh
+        - -c
+        - |
+          if [ -d /old-data/ssl-certs ] && [ "$(ls -A /old-data/ssl-certs)" ]; then
+            cp -r /old-data/ssl-certs/* /new-data/ 2>/dev/null || true
+            echo "Migration complete: data copied"
+          else
+            echo "Migration skipped: no old data found"
+          fi
+        volumeMounts:
+        - name: old-pvc
+          mountPath: /old-data
+        - name: new-pvc
+          mountPath: /new-data
+      volumes:
+      - name: old-pvc
+        persistentVolumeClaim:
+          claimName: traefik-{{ .Release.Name | replace "traefik-" "" }}
+          optional: true
+      - name: new-pvc
+        persistentVolumeClaim:
+          claimName: traefik-{{ .Release.Name | replace "traefik-" "" }}-rw
+{{- end }}
+{{- end }}

@@ -1,0 +1,45 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-desk:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  env:
+    NODE_ENV: "qa"
+    # Public API URL — desk loaded from any of the accepted hostnames
+    # below makes XHR/WS to api.mocktel.com (the LB-fronted hostname).
+    # Internal-direct desk users still resolve api.mocktel.com (public
+    # DNS reachable from the VPN) and pay one extra LB hop, which is
+    # acceptable for the simpler one-config story.
+    API_URL: "https://api.mocktel.com"
+    WS_URL: "wss://api.mocktel.com/ws"
+    PROVISIONING_URL: "https://p.mocktel.com"
+    # Hard-disable mock mode in QA. Without this, a fresh browser
+    # hitting desk.mocktel.com fell into the mock shell with auth
+    # bypassed because environment.production was false (NODE_ENV
+    # is "qa", not "production") and the default branch chose mock.
+    ALLOW_MOCK_MODE: "false"
+  ingress:
+    enabled: true
+    ingressClassName: traefik-qa
+    # Internal cluster name only. External LB (desk.mocktel.com) forwards
+    # to this internal name; Kubernetes ingress should not manage the
+    # external public domain, which is handled by the load balancer.
+    hosts:
+      - pdx1-qa-desk.mocktel.com

@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: noctel-api-trace-prod
+  namespace: argocd
+  labels:
+    environment: prod
+    component: noctel-api-trace
+spec:
+  project: noctel-prod
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: noctel-api-trace/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx1-prod-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true

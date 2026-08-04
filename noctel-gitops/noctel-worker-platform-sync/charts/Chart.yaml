@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-worker-platform-sync
+description: Per-env background worker for the platform-sync diff tool. Snapshot writer (nightly + on-demand), AMQP consumer for platform_sync.snapshot.request, daily prune. Pairs with noctel-api-platform-sync.
+type: application
+version: 0.1.0
+appVersion: "latest"

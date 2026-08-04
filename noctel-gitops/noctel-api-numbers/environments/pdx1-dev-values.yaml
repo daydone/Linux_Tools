@@ -1,0 +1,26 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-numbers:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7310"
+    HEALTH_PORT: "9310"
+    SERVICE_NAME: noctel-api-numbers
+    LOOKUP_DEFAULT_TYPE: carrier
+    LOOKUP_BULK_CONCURRENCY: "5"
+    LOOKUP_CACHE_TTL_CARRIER_S: "86400"
+    LOOKUP_CACHE_TTL_CNAM_S: "21600"
+    LOOKUP_CACHE_TTL_PORTABILITY_S: "3600"
+    BANDWIDTH_IRIS_BASE_URL: "https://dashboard.bandwidth.com/api"
+    INTELIQUENT_BASE_URL: "https://services.inteliquent.com"
+  secrets:
+    # TODO: add BANDWIDTH_ACCOUNT_ID, BANDWIDTH_USERNAME, BANDWIDTH_PASSWORD,
+    #       INTELIQUENT_CLIENT_ID, INTELIQUENT_CLIENT_SECRET, TELNYX_API_KEY

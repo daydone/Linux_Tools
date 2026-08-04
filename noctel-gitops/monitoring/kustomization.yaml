@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+metadata:
+  name: monitoring-stack
+namespace: monitoring
+
+resources:
+  - servicemonitors/etcd.yaml
+  - servicemonitors/kube-apiserver.yaml
+  - servicemonitors/kubelet.yaml
+  - servicemonitors/kube-scheduler.yaml
+  - servicemonitors/kube-controller-manager.yaml
+  - servicemonitors/argocd.yaml
+  - servicemonitors/loki.yaml
+  - servicemonitors/tempo.yaml
+  - servicemonitors/rabbitmq-servicemonitor.yaml
+  - servicemonitors/keydb.yaml
+  - servicemonitors/elasticsearch.yaml
+  - servicemonitors/redis-exporter.yaml
+  - servicemonitors/noctel-api-services.yaml
+  - servicemonitors/noctel-notify-services.yaml
+  - prometheusrules/etcd-alerts.yaml
+  - prometheusrules/kube-apiserver-alerts.yaml
+  - prometheusrules/kubelet-alerts.yaml
+  - prometheusrules/cluster-capacity-alerts.yaml
+  - prometheusrules/image-pull-alerts.yaml
+  - prometheusrules/dns-alerts.yaml
+  - prometheusrules/argocd-alerts.yaml
+  - prometheusrules/service-restart-alerts.yaml
+  - prometheusrules/rabbitmq-alerts.yaml
+  - prometheusrules/noctel-api-alerts.yaml
+  - prometheusrules/keydb-alerts.yaml
+  - prometheusrules/metallb-alerts.yaml
+  - prometheusrules/data-layer-alerts.yaml
+  # Data Layer Components (Exporter, Dashboards)
+  - configmaps/keydb-dashboard.yaml
+  - configmaps/rabbitmq-dashboard.yaml
+  - configmaps/elasticsearch-dashboard.yaml
+  - configmaps/data-layer-overview.yaml
+  - configmaps/elasticsearch-exporter.yaml
+  - configmaps/redis-exporter.yaml
+  # Grafana Datasources
+  - configmaps/grafana-datasources.yaml

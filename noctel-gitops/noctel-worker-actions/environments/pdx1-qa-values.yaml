@@ -1,0 +1,27 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-worker-actions:
+  version: "latest"
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9291"
+    HOST: "0.0.0.0"
+    SERVICE_NAME: actions-worker
+    LOG_LEVEL: info
+    NODE_ENV: qa
+    AMQP_PREFETCH: "30"
+    EXECUTION_TTL_SECONDS: "86400"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi

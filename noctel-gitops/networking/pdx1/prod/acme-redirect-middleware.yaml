@@ -1,0 +1,11 @@
+# Middleware to allow ACME HTTP-01 challenges without HTTPS redirect
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: acme-redirect
+  namespace: prod
+spec:
+  redirectRegex:
+    regex: "^https?://(.*)/.well-known/acme-challenge/(.*)"
+    replacement: "http://${1}/.well-known/acme-challenge/${2}"
+    permanent: false

@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pdx1-qa-networking
+  namespace: argocd
+  labels:
+    environment: qa
+    component: networking
+spec:
+  project: noctel-qa
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: networking/pdx1/qa
+    directory:
+      # kube-system DaemonSet; project noctel-qa only permits the qa
+      # namespace, so this one stays hand-applied (matches prod, which
+      # keeps no kube-system manifests in its networking dir).
+      exclude: 'noctel-notify-email-out-egress-gateway.yaml'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: qa
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

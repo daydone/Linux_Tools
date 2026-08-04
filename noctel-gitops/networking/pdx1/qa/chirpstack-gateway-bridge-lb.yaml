@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: qa-vlan-pool
+    metallb.universe.tf/allow-shared-ip: "qa-chirpstack"
+  labels:
+    app: chirpstack-gateway-bridge
+    cilium.io/l2-pool: qa-vlan
+  name: chirpstack-gateway-bridge-lb
+  namespace: qa
+spec:
+  allocateLoadBalancerNodePorts: true
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.0.98.80
+  ports:
+  - name: gateway
+    port: 3001
+    protocol: TCP
+    targetPort: 3001
+  - name: chirpstack-core
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: chirpstack-gateway-bridge
+  sessionAffinity: None
+  type: LoadBalancer

@@ -1,0 +1,22 @@
+{{- if and (dig "noctel-worker-fma" "metrics" "enabled" false (.Values | toJson | fromJson)) (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: fma-worker
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fma-worker
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  endpoints:
+  - port: {{ index .Values "noctel-worker-fma" "metrics" "port" | default "http" }}
+    path: {{ index .Values "noctel-worker-fma" "metrics" "path" | default "/metrics" }}
+    interval: {{ index .Values "noctel-worker-fma" "metrics" "interval" | default "30s" }}
+    scrapeTimeout: {{ index .Values "noctel-worker-fma" "metrics" "scrapeTimeout" | default "10s" }}
+{{- end }}

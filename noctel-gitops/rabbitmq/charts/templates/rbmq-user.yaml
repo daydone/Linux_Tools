@@ -1,0 +1,39 @@
+{{- if .Values.rabbitmq.definitions.createUser }}
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqUser
+metadata:
+  name: {{ .Values.rabbitmq.definitions.username | default "prod-api" }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  rabbitmqClusterReference:
+    name: ha-rabbit
+  tags:
+    - management
+  importCredentialsSecret:
+    name: rabbitmq-user-credentials
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqVhost
+metadata:
+  name: default
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  name: "/"
+  rabbitmqClusterReference:
+    name: ha-rabbit
+---
+apiVersion: rabbitmq.com/v1beta1
+kind: RabbitmqPermission
+metadata:
+  name: {{ .Values.rabbitmq.definitions.username | default "prod-api" }}-permissions
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  user: {{ .Values.rabbitmq.definitions.username | default "prod-api" }}
+  vhost: "/"
+  permissions:
+    configure: ".*"
+    read: ".*"
+    write: ".*"
+  rabbitmqClusterReference:
+    name: ha-rabbit
+{{- end }}

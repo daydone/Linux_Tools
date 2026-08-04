@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+  annotations:
+    metallb.universe.tf/address-pool: {{ .Values.global.namespace }}-vlan-pool
+spec:
+  # Device-provisioning edge. Phones speak plain HTTP on 7361, so this
+  # service gets its own stable MetalLB address that the external LB
+  # (noctel-haproxy) points its public provisioning backend at. The IP
+  # also carries a ClusterIP, so internal consumers (desk preview /
+  # download through the gateway) keep reaching it by service DNS name.
+  type: LoadBalancer
+  {{- if eq .Values.global.cluster "pdx1" }}
+  {{- if eq .Values.global.namespace "dev" }}
+  loadBalancerIP: 10.0.97.156
+  {{- else if eq .Values.global.namespace "qa" }}
+  loadBalancerIP: 10.0.98.156
+  {{- else if eq .Values.global.namespace "prod" }}
+  loadBalancerIP: 10.0.99.156
+  {{- end }}
+  {{- end }}
+  ports:
+  - port: 7361
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9361
+    targetPort: health
+    protocol: TCP
+    name: health
+  selector:
+    app: {{ .Chart.Name }}

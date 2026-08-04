@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-notify-mailbox-out
+description: noctel-notify-mailbox-out - Standalone separated chart for individual deployment
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

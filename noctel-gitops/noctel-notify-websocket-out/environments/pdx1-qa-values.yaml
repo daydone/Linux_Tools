@@ -1,0 +1,21 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-notify-websocket-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9410"
+    SERVICE_NAME: noctel-notify-websocket-out
+    # Service is `noctel-api-gateway-multiport` on :7100, not
+    # `noctel-api-gateway:3000`. See pdx1-dev for the failure-mode
+    # writeup.
+    GATEWAY_INTERNAL_URL: "http://noctel-api-gateway-multiport.qa.svc.cluster.local:7100"
+  secrets:
+    # TODO: add GATEWAY_SERVICE_TOKEN

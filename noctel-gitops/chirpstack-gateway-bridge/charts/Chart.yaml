@@ -1,0 +1,6 @@
+apiVersion: v2
+name: chirpstack-gateway-bridge
+description: ChirpStack Gateway Bridge
+type: application
+version: 0.1.0
+appVersion: "latest"

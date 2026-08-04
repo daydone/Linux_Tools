@@ -1,0 +1,93 @@
+traefik:
+  replicas: 1
+  image:
+    name: traefik
+    tag: v3.5.0
+  args:
+    - --api.dashboard=true
+    - --api.insecure=true
+    - --accesslog=true
+    - --entrypoints.web.address=:80
+    - --entrypoints.websecure.address=:443
+    - --entrypoints.traefik.address=:8080
+    - --entrypoints.metrics.address=:9101
+    - --entrypoints.smtp-relay.address=:9025/tcp
+    - --entrypoints.smtp-submit.address=:9587/tcp
+    - --providers.kubernetescrd
+    - --providers.kubernetesingress
+    - --log.level=INFO
+    - --metrics.prometheus=true
+    - --metrics.prometheus.entryPoint=metrics
+    - --providers.kubernetescrd.allowEmptyServices=true
+    - --providers.kubernetesingress.allowEmptyServices=true
+    - --providers.kubernetesingress.ingressendpoint.publishedservice=management/traefik-management
+    - --providers.kubernetescrd.namespaces=management,argocd,cattle-system,monitoring,kube-system,dex,clickhouse
+    - --providers.kubernetesingress.namespaces=management,argocd,cattle-system,monitoring,kube-system,dex,clickhouse
+    - --entryPoints.websecure.http.tls=true
+    - --entryPoints.websecure.http.tls.certResolver=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.provider=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.email=noc@telnoc.com
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.resolvers=8.8.8.8
+    - --certificatesresolvers.dnsmadeeasy.acme.storage=/ssl-certs/acme-dnsmadeeasy.json
+    - --certificatesresolvers.dnsmadeeasy.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+    - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    - --entryPoints.websecure.forwardedHeaders.trustedIPs=10.0.95.0/24
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env:
+    - name: DNSMADEEASY_API_EMAIL
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: email
+    - name: DNSMADEEASY_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-key
+    - name: DNSMADEEASY_API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-secret
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: longhorn
+    accessModes:
+      - ReadWriteMany
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.0.95.151
+    allocateLoadBalancerNodePorts: true
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    l2Pool: management-vlan
+    annotations:
+      metallb.universe.tf/address-pool: management-vlan-pool
+    ports:
+      web: 80
+      websecure: 443
+      metrics: 9100
+      smtp-relay: 9025
+      smtp-submit: 9587
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - traefik-management
+          topologyKey: kubernetes.io/hostname

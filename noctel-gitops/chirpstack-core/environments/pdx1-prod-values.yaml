@@ -1,0 +1,46 @@
+global:
+  namespace: prod
+
+chirpstack-core:
+    version: "4.7.0"      # Match pdx2 working version
+    # Single replica intentionally. With N>1, every chirpstack-core
+    # pod subscribes to the same MQTT topics (clean_session=false +
+    # random client_id) so all N pods independently process each
+    # uplink and emit duplicate AMQP publishes. The known-good VM
+    # deployment runs a single instance; mirroring that topology here
+    # eliminates a class of duplicate-event / racing-publish bugs and
+    # makes debugging the AMQP lapin path deterministic. Scale up
+    # only once shared MQTT subscriptions ($share/...) are in place.
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    config:
+      database:
+        host: "pdx-chirpdb2.telnoc.com"
+        port: 5432
+        name: "chirpstack_production"
+        user: "chirpstack_prod"
+        password: "N5/xHnFtggAYZ0okLCA1lQHk45bqbe8Pq8fVdso9isE%3D"
+      redis:
+        url: "redis://localhost:6379"
+      mqtt:
+        # ChirpStack v4 requires a URL scheme on the MQTT server. Bare
+        # host:port produces "Unsupported URL scheme" at startup and the
+        # pod crashes before any LoRa traffic flows. tcp:// for plain;
+        # ssl:// when we move to TLS.
+        server: "tcp://chirpstack-mosquitto.prod.svc.cluster.local:1883"
+    redis:
+      sidecar:
+        enabled: true
+        persistence:
+          enabled: true
+          size: "5Gi"

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    meta.helm.sh/release-name: noctel-qa
+    meta.helm.sh/release-namespace: qa
+  labels:
+    app.kubernetes.io/component: lns
+    app.kubernetes.io/instance: noctel-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: noctel-now
+    app.kubernetes.io/part-of: noctel-now
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: noctel-now-0.1.0
+  name: noctel-qa-lns-service
+  namespace: qa
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: noctel-lns
+  sessionAffinity: None
+  type: ClusterIP

@@ -1,0 +1,84 @@
+{{- if index .Values "noctel-worker-fax" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: fax-worker
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  replicas: {{ index .Values "noctel-worker-fax" "replicaCount" }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: fax-worker
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: fax-worker
+        app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+        app.kubernetes.io/name: noctel
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: fax-worker
+                  app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: worker
+        image: "{{ index .Values "noctel-worker-fax" "image" "repository" }}:{{ index .Values "noctel-worker-fax" "image" "tag" }}"
+        imagePullPolicy: {{ index .Values "noctel-worker-fax" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 9290
+          name: http
+          protocol: TCP
+        # AMQP_URL + REDIS_URL + ELASTICSEARCH_URL + DATABASE_URL come
+        # from noctel-api-secrets. Platform-wide non-secrets (NODE_ENV,
+        # LOG_LEVEL, service URLs) come from noctel-platform-env. The
+        # bare-metal fax-N node list is discovered at runtime from
+        # KeyDB (fax_fleet:*) via shared/fax-fleet.js — there is no
+        # AMI_HOST env var; the worker rotates across live fax nodes.
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- with index .Values "noctel-worker-fax" "env" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with index .Values "noctel-worker-fax" "extraEnv" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-worker-fax" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      enableServiceLinks: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
+{{- end }}

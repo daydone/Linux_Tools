@@ -1,0 +1,84 @@
+{{- $lnsTls := dict }}
+{{- if index .Values "chirpstack-gateway-bridge" "lnsTls" }}
+{{- $lnsTls = index .Values "chirpstack-gateway-bridge" "lnsTls" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "chirpstack-gateway-bridge" "version" }}
+spec:
+  replicas: {{ index .Values "chirpstack-gateway-bridge" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        version: {{ index .Values "chirpstack-gateway-bridge" "version" }}
+    spec:
+      {{- with index .Values "chirpstack-gateway-bridge" "nodeSelector" }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with index .Values "chirpstack-gateway-bridge" "affinity" }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "chirpstack/chirpstack-gateway-bridge:{{ index .Values "chirpstack-gateway-bridge" "version" }}"
+        imagePullPolicy: {{ index .Values "chirpstack-gateway-bridge" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 3001
+          name: gateway
+          protocol: TCP
+        - containerPort: 3000
+          name: ui
+          protocol: TCP
+        {{- with index .Values "chirpstack-gateway-bridge" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-gateway-bridge" "livenessProbe" }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-gateway-bridge" "readinessProbe" }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-gateway-bridge" "securityContext" }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-gateway-bridge" "env" }}
+        env:
+        {{- range $key, $value := . }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /etc/chirpstack-gateway-bridge
+          name: config
+          readOnly: true
+        {{- if $lnsTls.enabled }}
+        - mountPath: /etc/ssl/certs/lns
+          name: lns-tls-cert
+          readOnly: true
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Chart.Name }}-config
+      {{- if $lnsTls.enabled }}
+      - name: lns-tls-cert
+        secret:
+          secretName: {{ $lnsTls.secretName }}
+          defaultMode: 292
+      {{- end }}

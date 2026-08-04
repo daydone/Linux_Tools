@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: noctel-prod
+  namespace: argocd
+spec:
+  description: NocTel Development Environment
+  
+  # Source repositories
+  sourceRepos:
+  - 'git@bitbucket.org:noctel-bitbucket/noctel-gitops.git'
+  - 'https://charts.bitnami.com/bitnami'
+  
+  # Allowed destinations
+  destinations:
+  - namespace: prod
+    server: https://kubernetes.default.svc
+  
+  # Allowed cluster resources
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: networking.k8s.io
+    kind: IngressClass
+  # SeaweedFS chart ships a CiliumEgressGatewayPolicy (cluster-scoped).
+  # Same whitelist as noctel-dev / noctel-qa.
+  - group: cilium.io
+    kind: CiliumEgressGatewayPolicy
+  
+  # Namespace-scoped resources (allow all)
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  # Roles for this project
+  roles:
+  - name: prod-admin
+    description: Full access to prod environment
+    policies:
+    - p, proj:noctel-prod:prod-admin, applications, *, noctel-prod/*, allow
+    - p, proj:noctel-prod:prod-admin, repositories, *, *, allow
+    
+  # Sync windows (optional - can restrict when syncs are allowed)
+  # syncWindows: []

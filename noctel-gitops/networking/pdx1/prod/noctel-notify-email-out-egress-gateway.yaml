@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: noctel-notify-email-out-egress-gateway-prod
+  namespace: prod
+spec:
+  selector:
+    matchLabels:
+      app: noctel-notify-email-out-egress-gateway
+  template:
+    metadata:
+      labels:
+        app: noctel-notify-email-out-egress-gateway
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      hostNetwork: true
+      containers:
+      - name: egress-ip-manager
+        image: busybox:latest
+        securityContext:
+          privileged: true
+        command:
+        - sh
+        - -c
+        - |
+          # Ensure egress IP is added to loopback and stays there
+          ip addr add 10.0.99.152/32 dev lo 2>/dev/null || true
+          echo "Prod email egress IP configured: 10.0.99.152"
+          # Keep container running
+          sleep infinity
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+      tolerations:
+      - operator: Exists

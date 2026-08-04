@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kube-apiserver-alerts
+  namespace: monitoring
+  labels:
+    component: kube-apiserver
+spec:
+  groups:
+  - name: kube-apiserver
+    interval: 30s
+    rules:
+    - alert: KubeApiServerLatency
+      expr: histogram_quantile(0.99, rate(apiserver_request_duration_seconds_bucket{verb!="WATCH",verb!="CONNECT"}[5m])) > 1
+      for: 10m
+      labels:
+        severity: warning
+        component: kube-apiserver
+      annotations:
+        summary: "High kube-apiserver latency"
+        description: "99th percentile API request latency is {{ $value | humanize }}s"
+
+    - alert: KubeApiServerErrorRate
+      expr: sum(rate(apiserver_request_total{code=~"5.."}[5m])) by (verb) / sum(rate(apiserver_request_total[5m])) by (verb) > 0.05
+      for: 10m
+      labels:
+        severity: warning
+        component: kube-apiserver
+      annotations:
+        summary: "High kube-apiserver error rate"
+        description: "API server is returning {{ $value | humanizePercentage }} 5xx errors on {{ $labels.verb }} requests"
+
+    - alert: KubeApiServerDown
+      expr: up{job="kubernetes-apiservers"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: kube-apiserver
+      annotations:
+        summary: "Kube-apiserver is unreachable"
+        description: "Kube-apiserver metrics are unavailable"
+
+    - alert: KubeApiServerClientCertificateExpiration
+      expr: apiserver_client_certificate_expiration_seconds_count > 0 and histogram_quantile(0.1, apiserver_client_certificate_expiration_seconds_bucket) < 86400 * 7
+      for: 1h
+      labels:
+        severity: warning
+        component: kube-apiserver
+      annotations:
+        summary: "Client certificate expiration approaching"
+        description: "API server client certificates will expire in less than 7 days"
+
+    - alert: KubeApiServerAuditEventRate
+      expr: rate(apiserver_audit_event_total[5m]) > 1000
+      for: 10m
+      labels:
+        severity: info
+        component: kube-apiserver
+      annotations:
+        summary: "High audit event rate"
+        description: "API server is generating {{ $value | humanize }} audit events per second"

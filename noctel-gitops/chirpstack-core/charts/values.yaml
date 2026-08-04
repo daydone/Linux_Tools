@@ -1,0 +1,8 @@
+global:
+  namespace: default
+
+chirpstack-core:
+  version: "v4.7.3"
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent

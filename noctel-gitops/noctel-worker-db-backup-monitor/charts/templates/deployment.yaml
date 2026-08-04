@@ -1,0 +1,76 @@
+{{- if index .Values "noctel-worker-db-backup-monitor" "enabled" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: db-backup-monitor
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  # Singleton — alert coalescing state is in-memory per pod. Two
+  # replicas would double-fire on the first alarm after each one's
+  # coalesce window expires. Phase 2 may revisit with a leader lease
+  # in KeyDB if HA monitoring matters; today the operational risk
+  # of monitor downtime is "you find out late" not "you miss it" —
+  # the bare-metal agent's own journal is the canonical log.
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: db-backup-monitor
+      app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+      app.kubernetes.io/name: noctel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: db-backup-monitor
+        app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+        app.kubernetes.io/name: noctel
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      containers:
+      - name: monitor
+        image: "{{ index .Values "noctel-worker-db-backup-monitor" "image" "repository" }}:{{ index .Values "noctel-worker-db-backup-monitor" "image" "tag" }}"
+        imagePullPolicy: {{ index .Values "noctel-worker-db-backup-monitor" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 9294
+          name: http
+          protocol: TCP
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- with index .Values "noctel-worker-db-backup-monitor" "env" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with index .Values "noctel-worker-db-backup-monitor" "extraEnv" }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        {{- with index .Values "noctel-worker-db-backup-monitor" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      enableServiceLinks: false
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
+      {{- end }}
+{{- end }}

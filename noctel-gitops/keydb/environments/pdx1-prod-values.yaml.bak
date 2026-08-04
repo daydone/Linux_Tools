@@ -1,0 +1,15 @@
+global:
+  namespace: prod
+
+keydb:
+    enabled: true
+    replicaCount: 0
+    aclEnabled: true
+    aclUsername: keydb-prod
+    multiMaster: true
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    externalLoadBalancerIP: 10.0.99.160
+    metalLBPool: prod-vlan-pool
+    persistence:
+      size: 20Gi

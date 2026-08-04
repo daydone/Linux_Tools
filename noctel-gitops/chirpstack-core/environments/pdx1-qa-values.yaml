@@ -1,0 +1,37 @@
+global:
+  namespace: qa
+
+chirpstack-core:
+    # Image and scaling
+    version: "4.7.0"
+    image:
+      pullPolicy: IfNotPresent
+    replicaCount: 2
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    # Resource configuration
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: "4"
+        memory: 4Gi
+    # Environment-specific connections
+    config:
+      database:
+        host: "pdx-chirpdb1.telnoc.com"
+        port: "5432"
+        name: "chirpstack_qa"
+        user: "chirpstack_qa"
+        password: "T786Tv5P84zyVJzjd7aSLmSUnm3uYvDFcAEjPe5XDWY%3D"
+      redis:
+        url: "redis://keydb.qa.svc.cluster.local:6379"
+      mqtt:
+        server: "tcp://ha-rabbit.qa.svc.cluster.local:1883"
+    postgresql:
+      dsn: "postgres://chirpstack_qa:T786Tv5P84zyVJzjd7aSLmSUnm3uYvDFcAEjPe5XDWY%3D@pdx-chirpdb1.telnoc.com:5432/chirpstack_qa?sslmode=disable"
+    redis:
+      servers: ["redis://keydb.qa.svc.cluster.local:6379"]
+    mqtt:
+      server: "tcp://ha-rabbit.qa.svc.cluster.local:1883"

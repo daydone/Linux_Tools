@@ -1,0 +1,34 @@
+image:
+  registry: pdx-harbor.telnoc.com
+  repository: noctel/tempo
+  tag: "2.8.2"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: harbor-pull
+
+tempo:
+  auth_enabled: false
+  retention: 720h
+  storage:
+    trace:
+      backend: local
+      local:
+        path: /var/tempo/traces
+      block:
+        version: vParquet4
+  distributor:
+    rate_limit_bytes: 10000000
+
+server:
+  httpListenPort: 3200
+  grpcListenPort: 4317
+
+persistence:
+  enabled: true
+  size: 25Gi
+  storageClassName: local-path
+
+monitoring:
+  serviceMonitor:
+    enabled: true

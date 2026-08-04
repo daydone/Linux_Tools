@@ -1,0 +1,23 @@
+elasticsearch:
+  version: "8.15.5"
+  replicaCount: 1
+  security:
+    enabled: true
+  http:
+    tls:
+      disabled: true
+  volumeClaimTemplate:
+    resources:
+      requests:
+        storage: 20Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000

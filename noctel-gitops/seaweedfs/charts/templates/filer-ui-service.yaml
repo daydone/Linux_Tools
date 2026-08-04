@@ -1,0 +1,18 @@
+{{- if index .Values "seaweedfs" "deployFiler" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-filer-ui
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-filer
+    component: filer
+spec:
+  type: ClusterIP
+  ports:
+  - name: filer
+    port: 8888
+    targetPort: 8888
+  selector:
+    app: {{ .Chart.Name }}-filer
+{{- end }}

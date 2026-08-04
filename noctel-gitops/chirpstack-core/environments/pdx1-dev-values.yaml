@@ -1,0 +1,35 @@
+global:
+  namespace: dev
+
+chirpstack-core:
+    version: "4.7.0"
+    replicaCount: 3
+    image:
+      pullPolicy: IfNotPresent
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      runAsNonRoot: true
+      fsGroup: 1000
+    env:
+      RUST_LOG: info
+    config:
+      database:
+        host: "pdx-chirpdb1.telnoc.com"
+        port: "5432"
+        name: "chirpstack_dev"
+        user: "chirpstack_dev"
+        password: "yIgexn6ZdC6jZcABCulY+EUkSKHq6lS2fh9viSF7iyc%3D"
+      redis:
+        url: "redis://keydb.dev.svc.cluster.local:6379"
+      mqtt:
+        server: "tcp://chirpstack-mosquitto.dev.svc.cluster.local:1883"

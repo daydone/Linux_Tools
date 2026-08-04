@@ -1,0 +1,122 @@
+{{- $v := index .Values "noctel-syslog" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ $v.version }}
+spec:
+  replicas: {{ $v.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      {{- with $v.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: noctel
+        version: {{ $v.version }}
+    spec:
+      {{- if $v.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: {{ $v.dnsPolicy | default "ClusterFirstWithHostNet" }}
+      {{- end }}
+      {{- with $v.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Chart.Name }}
+              topologyKey: kubernetes.io/hostname
+
+      imagePullSecrets:
+        {{- toYaml $v.imagePullSecrets | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "pdx-harbor.telnoc.com/noctel/{{ .Chart.Name }}:{{ $v.version }}"
+        imagePullPolicy: {{ $v.image.pullPolicy }}
+        ports:
+        - name: syslog-udp
+          containerPort: {{ $v.env.SYSLOG_UDP_PORT | int }}
+          protocol: UDP
+        - name: syslog-tcp
+          containerPort: {{ $v.env.SYSLOG_TCP_PORT | int }}
+          protocol: TCP
+        {{- if ne ($v.env.SYSLOG_TLS_PORT | toString) "0" }}
+        - name: syslog-tls
+          containerPort: {{ $v.env.SYSLOG_TLS_PORT | int }}
+          protocol: TCP
+        {{- end }}
+        - name: admin-http
+          containerPort: {{ $v.env.ADMIN_HTTP_PORT | int }}
+        - name: health
+          containerPort: {{ $v.env.HEALTH_PORT | int }}
+        envFrom:
+          # Platform-wide CLUSTER / NAMESPACE / OTEL config.
+          - configMapRef:
+              name: noctel-platform-env
+          # Shared per-namespace secret (AMQP_URL / REDIS_URL /
+          # ELASTICSEARCH_URL etc.) — the same source every service
+          # consumes. No per-service env secret; that drift is what pinned
+          # syslog at prod broker creds in qa.
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- range $key, $value := $v.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := $v.secrets }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- if ne ($v.env.SYSLOG_TLS_PORT | toString) "0" }}
+        volumeMounts:
+        {{- range $v.secretMounts }}
+        - name: {{ .name }}
+          mountPath: {{ .mountPath }}
+          readOnly: true
+        {{- end }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: admin-http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: admin-http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        {{- with $v.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- if ne ($v.env.SYSLOG_TLS_PORT | toString) "0" }}
+      # TLS cert material is only mounted when the mTLS listener is enabled.
+      volumes:
+      {{- range $v.secretMounts }}
+      - name: {{ .name }}
+        secret:
+          secretName: {{ .secretName }}
+      {{- end }}
+      {{- end }}

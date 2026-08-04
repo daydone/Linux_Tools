@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-api-cnam
+description: noctel-api-cnam - Calling Name (CNAM) lookup and management service
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

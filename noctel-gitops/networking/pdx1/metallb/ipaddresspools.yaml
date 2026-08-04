@@ -1,0 +1,39 @@
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: management-vlan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.95.150-10.0.95.160
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: dev-vlan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.97.80-10.0.97.81
+  - 10.0.97.150-10.0.97.160
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: qa-vlan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.98.80-10.0.98.81
+  - 10.0.98.150-10.0.98.160
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: prod-vlan-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 10.0.99.80-10.0.99.82
+  - 10.0.99.150-10.0.99.160

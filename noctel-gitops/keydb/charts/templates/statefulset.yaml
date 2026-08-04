@@ -1,0 +1,291 @@
+{{- if .Values.keydb.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: keydb
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: keydb
+spec:
+  serviceName: keydb-headless
+  replicas: {{ .Values.keydb.replicaCount }}
+  selector:
+    matchLabels:
+      app: keydb
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels:
+        app: keydb
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if .Values.keydb.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.keydb.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if .Values.keydb.affinity }}
+      affinity:
+        {{- toYaml .Values.keydb.affinity | nindent 8 }}
+      {{- end }}
+      # Soft topology spread so the scheduler distributes KeyDB pods
+      # across distinct nodes when capacity allows, without making
+      # extra pods unschedulable on clusters with fewer workers than
+      # replicas. The 2026-06-03 qa incident traced to all 3 pods on
+      # one worker: rolling restart caused a Longhorn multi-attach
+      # hang as one pod tried to re-take a volume the prior pod
+      # hadn't fully released. With pods on distinct nodes the
+      # detach/attach for one volume is independent of the others.
+      # Hard requiredDuringScheduling would be ideal but breaks
+      # scheduling when worker-count < replicaCount (current pdx1 has
+      # 2 workers, qa/prod want 3 KeyDB replicas — see #288).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: keydb
+      # Give KeyDB time to flush AOF + release its Longhorn volume
+      # before kubelet starts the detach. The default 30s was
+      # sometimes too short under heavy write churn; the multi-
+      # attach hang on next-pod attach was the visible symptom.
+      terminationGracePeriodSeconds: 120
+      {{- if .Values.keydb.aclEnabled }}
+      initContainers:
+      - name: extract-password
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - |
+            cp /base-config/keydb.conf /config/keydb.conf
+            KEYDB_URL=$(cat /run/secrets/redis_url)
+            PASSWORD=$(echo "$KEYDB_URL" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
+            if [ -z "$PASSWORD" ]; then
+              echo "ERROR: Could not extract password from REDIS_URL" >&2
+              exit 1
+            fi
+            cat >> /config/keydb.conf <<EOF
+
+            # ACL configuration
+            aclfile /etc/keydb/acl.conf
+            masterauth $PASSWORD
+            masteruser {{ .Values.keydb.aclUsername }}
+            EOF
+            cat > /config/acl.conf <<EOF
+            user default on nopass ~* &* +@all
+            user {{ .Values.keydb.aclUsername }} on >$PASSWORD ~* &* +@all
+            EOF
+        volumeMounts:
+        - name: redis-url
+          mountPath: /run/secrets
+          readOnly: true
+        - name: base-config
+          mountPath: /base-config
+          readOnly: true
+        - name: writable-config
+          mountPath: /config
+      {{- end }}
+      containers:
+      - name: keydb
+        image: "{{ .Values.keydb.image.repository }}:{{ .Values.keydb.image.tag }}"
+        imagePullPolicy: {{ .Values.keydb.image.pullPolicy }}
+        ports:
+        - containerPort: {{ .Values.keydb.port }}
+          name: keydb
+        env:
+        # Downward-API: each pod needs to know its own ordinal name
+        # so the startup wrapper can skip itself when building the
+        # --replicaof list. Without this every pod ends up replicating
+        # FROM ITSELF, which produces a tight reconnect loop, the
+        # "Master replied with a UUID we don't understand" log spam,
+        # and PING latency that fails the readiness probe.
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        command:
+        - /bin/sh
+        - -c
+        - |
+          # Per-pod startup wrapper. Builds --replicaof flags for every
+          # peer EXCEPT this pod. CLI args can't vary per-pod in a vanilla
+          # StatefulSet template, so the wrapper inspects POD_NAME and
+          # peer DNS at runtime.
+          #
+          # Peer discovery scans ordinals 0..maxPeers-1 and emits a
+          # --replicaof only for peers whose DNS resolves at startup.
+          # Earlier versions pre-allocated all maxPeers slots regardless;
+          # KeyDB does NOT tolerate that gracefully — unresolvable peers
+          # produce "Unable to connect to MASTER: Invalid argument" in a
+          # tight retry loop, and KeyDB cycles through the configured
+          # masters trying to establish a link, so master_link_status
+          # stays down and the active-replica mesh never converges.
+          #
+          # Trade-off: scaling up the StatefulSet now requires a rolling
+          # restart of existing pods so they pick up the new peer in
+          # their --replicaof list. The alternative (a sidecar that runs
+          # REPLICAOF post-startup as new pods appear) is on the radar
+          # but not worth the complexity for current scale-up cadence.
+          set -e
+          NS={{ .Values.global.namespace }}
+          PORT={{ .Values.keydb.port }}
+          MAX_PEERS={{ .Values.keydb.maxPeers | default 10 }}
+          # Build --replicaof only for peers whose DNS resolves right now.
+          # Under OrderedReady (default StatefulSet startup), keydb-0
+          # boots alone and ends up with no --replicaof; later pods see
+          # earlier ordinals and replicate from them. Active-replica makes
+          # the connection bidirectional, so writes propagate even though
+          # keydb-0 has no upstream of its own — keydb-0 acts as the hub
+          # of a star topology. master_link_status:down on keydb-0 is
+          # therefore expected and not a real failure.
+          PEERS=""
+          i=0
+          while [ $i -lt $MAX_PEERS ]; do
+            peer="keydb-$i"
+            if [ "$peer" != "$POD_NAME" ]; then
+              fqdn="${peer}.keydb-headless.${NS}.svc.cluster.local"
+              if getent hosts "$fqdn" >/dev/null 2>&1; then
+                PEERS="$PEERS --replicaof $fqdn $PORT"
+              fi
+            fi
+            i=$((i + 1))
+          done
+{{- range .Values.keydb.externalNodes }}
+{{- $parts := splitList ":" . }}
+          PEERS="$PEERS --replicaof {{ index $parts 0 }} {{ index $parts 1 }}"
+{{- end }}
+          # Build the static flag list separately from PEERS so the
+          # Helm template's whitespace-strip directives can't collapse
+          # shell line-continuations. Each conditional appends to FLAGS.
+          FLAGS="/etc/keydb/keydb.conf"
+          {{- if .Values.keydb.activeReplica }}
+          FLAGS="$FLAGS --active-replica yes"
+          {{- end }}
+          {{- if .Values.keydb.multiMaster }}
+          FLAGS="$FLAGS --multi-master yes"
+          {{- end }}
+          FLAGS="$FLAGS --server-threads {{ .Values.keydb.serverThreads }}"
+          FLAGS="$FLAGS --server-thread-affinity false"
+          FLAGS="$FLAGS --appendonly yes --dir /data"
+          FLAGS="$FLAGS --bind 0.0.0.0 --port {{ .Values.keydb.port }}"
+          echo "[startup] POD_NAME=$POD_NAME max_peers=$MAX_PEERS peers=$PEERS"
+          # shellcheck disable=SC2086 -- intentional word splitting on FLAGS+PEERS
+          exec keydb-server $FLAGS $PEERS
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        {{- if .Values.keydb.aclEnabled }}
+        - name: writable-config
+          mountPath: /etc/keydb
+        {{- else }}
+        - name: config
+          mountPath: /etc/keydb
+        {{- end }}
+        resources:
+          {{- toYaml .Values.keydb.resources | nindent 10 }}
+        # Clean shutdown so the AOF is durable and Longhorn can
+        # detach the PVC promptly. SHUTDOWN NOSAVE because RDB is
+        # disabled platform-wide (configmap: `save ""`); a SAVE
+        # variant would block waiting for a snapshot that's
+        # explicitly off. Local default user is nopass on the ACL
+        # configmap so no -a flag needed.
+        lifecycle:
+          preStop:
+            exec:
+              command:
+                - sh
+                - -c
+                - keydb-cli -p {{ .Values.keydb.port }} SHUTDOWN NOSAVE || true
+        livenessProbe:
+          exec:
+            command:
+            - keydb-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          # 10s timeout: a healthy KeyDB pings sub-millisecond, but
+          # the IO thread can briefly stall during AOF rewrite, RDB
+          # snapshot, or a heavy SCAN from another client. The old 5s
+          # ceiling killed pods unnecessarily during normal background
+          # work and triggered cascading restarts.
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - keydb-cli
+            - ping
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          # 10s for the same reason as liveness — but readiness is even
+          # more sensitive because a single timeout flips the pod out of
+          # the Service endpoints, surfacing as ECONNREFUSED to clients
+          # and adding ioredis's 5s reconnect-window penalty per request.
+          # The April 2026 cluster-thrash + 6s desk-load symptom traced
+          # to this probe's old 3s window.
+          timeoutSeconds: 10
+          failureThreshold: 3
+      {{- if .Values.keydb.exporter.enabled }}
+      # Prometheus metrics sidecar. Gate on .Values.keydb.exporter.enabled
+      # so envs can opt out while the dockerhub-secret credential issue
+      # is being resolved (prod keydb-2 + dev keydb-1 + qa keydb-2 hit
+      # "insufficient_scope: authorization failed" pulling
+      # prometheuscommunity/redis-exporter from Docker Hub on
+      # 2026-06-03). The exporter only feeds grafana dashboards; main
+      # keydb traffic doesn't depend on it.
+      - name: redis-exporter
+        image: "{{ .Values.keydb.exporter.image }}"
+        imagePullPolicy: {{ .Values.keydb.exporter.imagePullPolicy | default "IfNotPresent" }}
+        ports:
+        - containerPort: 9121
+          name: metrics
+        env:
+        - name: REDIS_ADDR
+          value: "localhost:{{ .Values.keydb.port }}"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 250m
+            memory: 256Mi
+      {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: keydb-config
+      {{- if .Values.keydb.aclEnabled }}
+      - name: base-config
+        configMap:
+          name: keydb-config
+      - name: writable-config
+        emptyDir: {}
+      - name: redis-url
+        projected:
+          sources:
+          - secret:
+              name: noctel-api-secrets
+              items:
+              - key: REDIS_URL
+                path: redis_url
+      {{- end }}
+  {{- if .Values.keydb.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      {{- if .Values.keydb.persistence.storageClass }}
+      storageClassName: {{ .Values.keydb.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.keydb.persistence.size }}
+  {{- end }}
+{{- end }}

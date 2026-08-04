@@ -1,0 +1,127 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: data-layer-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: keydb.alerts
+    interval: 30s
+    rules:
+    - alert: KeyDBMemoryPressureHigh
+      expr: (sum(redis_memory_used_bytes{namespace="prod"}) / 1500000000) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+        component: keydb
+      annotations:
+        summary: "KeyDB memory > 85% ({{ $value | humanizePercentage }})"
+        description: "KeyDB memory pressure is high. Check cache eviction rate and connected clients."
+
+    - alert: KeyDBEvictingKeys
+      expr: rate(redis_evicted_keys_total{namespace="prod"}[5m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+        component: keydb
+      annotations:
+        summary: "KeyDB evicting keys ({{ $value | humanize }}/sec)"
+        description: "KeyDB is evicting keys due to memory pressure. Increase maxmemory or reduce dataset."
+
+    - alert: KeyDBReplicationDown
+      expr: sum(redis_connected_slaves{namespace="prod"}) < 2
+      for: 5m
+      labels:
+        severity: critical
+        component: keydb
+      annotations:
+        summary: "KeyDB replication degraded ({{ $value }} replicas)"
+        description: "KeyDB has lost replicas. Check pod status: kubectl get pods -n prod -l app=keydb"
+
+  - name: rabbitmq.alerts
+    interval: 30s
+    rules:
+    - alert: RabbitMQQueueNoConsumers
+      expr: rabbitmq_queue_consumers{namespace="prod"} == 0 and rabbitmq_queue_messages_ready{namespace="prod"} > 100
+      for: 5m
+      labels:
+        severity: critical
+        component: rabbitmq
+      annotations:
+        summary: "Queue {{ $labels.queue }} has no consumers"
+        description: "Queue {{ $labels.queue }} has {{ $value | humanize }} messages but 0 active consumers. Consumer service may be down."
+
+    - alert: RabbitMQQueueDepthHigh
+      expr: sum(rabbitmq_queue_messages_ready{namespace="prod"}) > 10000
+      for: 10m
+      labels:
+        severity: warning
+        component: rabbitmq
+      annotations:
+        summary: "RabbitMQ total queue depth > 10k"
+        description: "RabbitMQ has {{ $value | humanize }} messages queued. Consumers may be falling behind."
+
+    - alert: RabbitMQMemoryHigh
+      expr: (sum(rabbitmq_process_resident_memory_bytes{namespace="prod"}) / 2000000000) > 0.80
+      for: 10m
+      labels:
+        severity: warning
+        component: rabbitmq
+      annotations:
+        summary: "RabbitMQ memory > 80% ({{ $value | humanizePercentage }})"
+        description: "RabbitMQ is approaching memory limit (2GB). Risk of connection blocking."
+
+    - alert: RabbitMQNodeDown
+      expr: count(up{job="rabbitmq", namespace="prod"}) < 3
+      for: 5m
+      labels:
+        severity: critical
+        component: rabbitmq
+      annotations:
+        summary: "RabbitMQ node down ({{ $value }} nodes up)"
+        description: "RabbitMQ cluster has lost a node. Check pod status and logs."
+
+  - name: elasticsearch.alerts
+    interval: 30s
+    rules:
+    - alert: ElasticsearchUnassignedShards
+      expr: elasticsearch_unassigned_shards{namespace="prod"} > 0
+      for: 10m
+      labels:
+        severity: warning
+        component: elasticsearch
+      annotations:
+        summary: "Elasticsearch has {{ $value }} unassigned shards"
+        description: "Elasticsearch cluster has unassigned shards. This may indicate a rebalancing issue or node failure."
+
+    - alert: ElasticsearchNodeDown
+      expr: count(up{job="elasticsearch", namespace="prod"}) < 3
+      for: 5m
+      labels:
+        severity: critical
+        component: elasticsearch
+      annotations:
+        summary: "Elasticsearch node down ({{ $value }} nodes up)"
+        description: "Elasticsearch cluster has lost a node. Only {{ $value }}/3 nodes are up."
+
+    - alert: ElasticsearchJVMHeapHigh
+      expr: (sum(elasticsearch_jvm_memory_used_bytes{namespace="prod", type="heap"}) / sum(elasticsearch_jvm_memory_max_bytes{namespace="prod", type="heap"})) > 0.85
+      for: 10m
+      labels:
+        severity: warning
+        component: elasticsearch
+      annotations:
+        summary: "Elasticsearch JVM heap > 85% ({{ $value | humanizePercentage }})"
+        description: "Elasticsearch JVM heap pressure is high. Risk of GC pauses and query slowdown."
+
+    - alert: ElasticsearchClusterUnhealthy
+      expr: elasticsearch_cluster_health_status{namespace="prod"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: elasticsearch
+      annotations:
+        summary: "Elasticsearch cluster status is RED"
+        description: "Elasticsearch cluster is in RED status. Search/indexing may be failing."

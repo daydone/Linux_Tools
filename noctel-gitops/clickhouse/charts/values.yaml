@@ -1,0 +1,58 @@
+# ClickStack Helm Chart Values for ClickHouse Deployment
+# Using official ClickStack chart from https://clickhouse.github.io/ClickStack-helm-charts
+# Ref: https://clickhouse.com/docs/use-cases/observability/clickstack/deployment/helm
+# Environment-specific overrides in ../environments/pdx1-values.yaml and ../environments/pdx2-values.yaml
+
+# Disable HyperDX - we only need ClickHouse for CSR SIP logging
+hyperdx:
+  enabled: false
+
+# Disable OTEL Collector - not needed for CSR logging
+otel-collector:
+  enabled: false
+
+# Disable MongoDB - not needed
+mongodb:
+  enabled: false
+
+# ClickHouse Configuration
+# Managed by ClickHouse Operator via ClickHouseCluster custom resource
+clickhouse:
+  enabled: true
+
+  # Image from Harbor (replicated from docker.io/clickhouse/clickhouse-server)
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/clickhouse/clickhouse-server
+    tag: "24.4.1"
+    pullPolicy: IfNotPresent
+
+  # Use Harbor pull secret for image authentication
+  imagePullSecrets:
+    - name: harbor-pull
+
+  # ClickHouseCluster specification (CRD managed by operator)
+  spec:
+    topology:
+      shards:
+        - replica_count: 1
+
+    configuration:
+      # ClickHouse server configuration
+      users:
+        - name: default
+          access_management: 0
+
+    # Storage (will be customized per environment)
+    storage:
+      disks:
+        - name: default_disk
+          type: local
+          path: /var/lib/clickhouse
+          size: 100Gi
+
+      policies:
+        - name: default
+          volumes:
+            - disk: default_disk
+
+  # Additional ClickHouse configuration via additionalManifests in environments

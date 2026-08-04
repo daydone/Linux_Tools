@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    meta.helm.sh/release-name: noctel-qa
+    meta.helm.sh/release-namespace: qa
+  labels:
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/instance: noctel-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: noctel-now
+    app.kubernetes.io/part-of: noctel-now
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: noctel-now-0.1.0
+  name: noctel-qa-ui-service
+  namespace: qa
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/instance: noctel-qa
+  sessionAffinity: None
+  type: ClusterIP

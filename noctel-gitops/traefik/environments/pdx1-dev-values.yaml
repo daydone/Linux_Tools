@@ -1,0 +1,59 @@
+traefik:
+  replicas: 1
+  image:
+    name: traefik
+    tag: v3.5.0
+  args:
+    - --api.dashboard=true
+    - --accesslog=true
+    - --entrypoints.web.address=:80
+    - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    - --entrypoints.websecure.address=:443
+    - --entrypoints.websecure.forwardedHeaders.trustedIPs=10.0.97.0/24
+    - --entrypoints.metrics.address=:9101
+    - --entrypoints.health.address=:9100
+    - --entrypoints.smtp-relay.address=:9025/tcp
+    - --entrypoints.smtp-submit.address=:9587/tcp
+    - --providers.kubernetescrd
+    - --providers.kubernetesingress
+    - --log.level=INFO
+    - --metrics.prometheus=true
+    - --metrics.prometheus.entryPoint=metrics
+    - --providers.kubernetescrd.allowEmptyServices=true
+    - --providers.kubernetesingress.allowEmptyServices=true
+    - --providers.kubernetesingress.ingressendpoint.publishedservice=dev/traefik-dev
+    - --providers.kubernetescrd.namespaces=dev
+    - --providers.kubernetesingress.namespaces=dev
+    - --entryPoints.websecure.http.tls=true
+    - --entryPoints.websecure.http.tls.certResolver=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.provider=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.email=noc@telnoc.com
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.resolvers=8.8.8.8
+    - --certificatesresolvers.dnsmadeeasy.acme.storage=/ssl-certs/acme-dnsmadeeasy.json
+    - --certificatesresolvers.dnsmadeeasy.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: longhorn
+    accessModes:
+      - ReadWriteMany
+    migrate: false
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.0.97.151
+    ports:
+      web: 80
+      websecure: 443
+      metrics: 9100
+      smtp-relay: 9025
+      smtp-submit: 9587
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: chirpstack-mosquitto
+description: Eclipse Mosquitto MQTT Broker for ChirpStack
+type: application
+version: 0.1.0
+appVersion: "2.0.18"

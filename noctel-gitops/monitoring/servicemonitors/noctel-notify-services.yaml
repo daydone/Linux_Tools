@@ -1,0 +1,99 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-notify-email-in
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-notify-email-in
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-notify-slack-in
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-notify-slack-in
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-notify-sms-in
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-notify-sms-in
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-worker-cleanup
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-worker-cleanup
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: noctel-worker-chirp-out
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack-pdx1
+spec:
+  namespaceSelector:
+    matchNames:
+      - prod
+  selector:
+    matchLabels:
+      app: noctel-worker-chirp-out
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

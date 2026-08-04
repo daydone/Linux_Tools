@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keydb-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: grafana
+data:
+  keydb-cluster.json: |
+    {
+      "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+      "description": "KeyDB Cluster - Prod - Auto-scales with pod count",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "gnetId": null,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "custom": {"hideFrom": {"tooltip": false, "viz": false, "legend": false}}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "redis_up", "legendFormat": "", "refId": "A"}],
+          "title": "Cluster Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {"displayMode": "table", "showHeader": true, "sortBy": []},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "redis_connected_clients", "legendFormat": "{{instance}}", "refId": "A"}],
+          "title": "Connected Clients per Pod (auto-scales)",
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 10, "gradientMode": "opacity", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "auto", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "line"}}, "mappings": [], "max": 4294967296, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 3221225472}, {"color": "red", "value": 3865470976}]}, "unit": "decbytes"}},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {"legend": {"calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "redis_memory_used_bytes / redis_memory_max_bytes * 100", "legendFormat": "{{instance}} (% of maxmemory)", "refId": "A"}],
+          "title": "Memory % of Configured Limit (auto-scales with pods)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 70}, {"color": "green", "value": 85}]}, "unit": "percent"}},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+          "id": 4,
+          "options": {"displayMode": "table", "showHeader": true, "sortBy": []},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "(redis_keyspace_hits_total / (redis_keyspace_hits_total + redis_keyspace_misses_total)) * 100", "legendFormat": "{{instance}}", "refId": "A"}],
+          "title": "Cache Hit Ratio per Pod (auto-scales)",
+          "type": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "decbytes"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "redis_memory_used_bytes", "legendFormat": "{{instance}}", "refId": "A"}],
+          "title": "Memory Usage per Pod (auto-scales with pods)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 10}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "rate(redis_evicted_keys_total[5m])", "legendFormat": "{{instance}}", "refId": "A"}],
+          "title": "Key Eviction Rate per pod (should be 0)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 2, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "ops"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 7,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [
+            {"expr": "rate(redis_total_reads_processed[1m])", "legendFormat": "{{instance}} reads/s", "refId": "A"},
+            {"expr": "rate(redis_total_writes_processed[1m])", "legendFormat": "{{instance}} writes/s", "refId": "B"}
+          ],
+          "title": "Read/Write Rate per Pod (auto-scales with pods)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 8,
+          "options": {"displayMode": "table", "showHeader": true, "sortBy": []},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "redis_connected_slaves", "legendFormat": "{{instance}} replicas", "refId": "A"}],
+          "title": "Replication Status per pod (auto-scales with pods)",
+          "type": "table"
+        }
+      ],
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": ["data-layer", "cache", "keydb"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "KeyDB Cluster - Prod",
+      "uid": "keydb-cluster-prod",
+      "version": 0
+    }

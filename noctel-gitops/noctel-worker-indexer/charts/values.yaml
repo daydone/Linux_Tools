@@ -1,0 +1,26 @@
+global:
+  namespace: default
+
+noctel-worker-indexer:
+  replicaCount: 1
+  version: "latest"
+  # Harness health-server port. Pinned via env so the liveness probe
+  # targets a deterministic port (the harness otherwise derives it).
+  healthPort: 9280
+  env:
+    HEALTH_PORT: "9280"
+    # Boot-time drift auto-repair is OFF by default. It reindexes
+    # mapping-drifted indices synchronously DURING BOOTSTRAP, before any
+    # consumer starts — on 2026-07-13 that hung every prod replica for
+    # 22h on multi-million-doc history indices (no leader lock, no
+    # timeout, delete-original design). Alert-only everywhere; dev opts
+    # back in via its environment values. Drift on shared clusters gets
+    # fixed by a deliberate operator-run reindex.
+    INDEXER_AUTO_REPAIR: "0"
+  image:
+    pullPolicy: IfNotPresent
+  securityContext:
+    fsGroup: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001

@@ -1,0 +1,71 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: etcd-alerts
+  namespace: monitoring
+  labels:
+    component: etcd
+spec:
+  groups:
+  - name: etcd
+    interval: 30s
+    rules:
+    - alert: EtcdHighNumberOfLeaderChanges
+      expr: rate(etcd_server_leader_changes_seen_total[15m]) > 3
+      for: 5m
+      labels:
+        severity: warning
+        component: etcd
+      annotations:
+        summary: "High number of etcd leader changes"
+        description: "etcd cluster has experienced {{ $value | humanize }} leader changes in the last 15 minutes"
+
+    - alert: EtcdInsufficientMembers
+      expr: count(up{job="etcd"} == 1) < 3
+      for: 3m
+      labels:
+        severity: critical
+        component: etcd
+      annotations:
+        summary: "Etcd has fewer than 3 members"
+        description: "Only {{ $value }} etcd members are up, quorum is at risk"
+
+    - alert: EtcdMemberCommunicationSlow
+      expr: histogram_quantile(0.99, rate(etcd_disk_backend_fsync_duration_seconds_bucket[5m])) > 0.25
+      for: 10m
+      labels:
+        severity: warning
+        component: etcd
+      annotations:
+        summary: "Slow etcd fsync performance"
+        description: "99th percentile fsync latency is {{ $value | humanize }}s"
+
+    - alert: EtcdHighNumberOfFailedProposals
+      expr: rate(etcd_server_proposals_failed_total[5m]) > 5
+      for: 5m
+      labels:
+        severity: warning
+        component: etcd
+      annotations:
+        summary: "High rate of etcd proposal failures"
+        description: "etcd is experiencing {{ $value | humanize }} failed proposals per second"
+
+    - alert: EtcdDBSizeExceedsThreshold
+      expr: etcd_debugging_mvcc_db_total_size_in_bytes > 2147483648
+      for: 10m
+      labels:
+        severity: warning
+        component: etcd
+      annotations:
+        summary: "etcd database size exceeds 2GB"
+        description: "etcd database size is {{ $value | humanize }}B, consider compacting"
+
+    - alert: EtcdNoLeader
+      expr: etcd_server_has_leader == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: etcd
+      annotations:
+        summary: "etcd cluster has no leader"
+        description: "etcd cluster is degraded and cannot elect a leader"

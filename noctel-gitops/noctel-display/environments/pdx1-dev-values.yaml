@@ -1,0 +1,45 @@
+noctel-display:
+    version: "latest"
+    replicaCount: 3
+    image:
+      pullPolicy: Always
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      fsGroup: 1001
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 3001
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 3001
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 3
+    env:
+      NODE_ENV: development
+      LOG_LEVEL: debug
+      PORT: "3001"
+      API_URL: http://noctel-dev-api.dev.svc.cluster.local:3000
+      WS_URL: ws://noctel-dev-api.dev.svc.cluster.local:3000/ws
+      # REDIS_URL, SESSION_SECRET, JWT_ACCESS_SECRET sourced from
+      # noctel-api-secrets via envFrom on the deployment. Don't set
+      # them here — env: precedence shadows envFrom AND leaks creds
+      # into plaintext gitops. (The dev REDIS_URL value previously
+      # here had no password, which is also why noctel-display was
+      # NOAUTH-failing on KeyDB connect.)

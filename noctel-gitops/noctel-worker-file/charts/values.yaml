@@ -1,0 +1,19 @@
+global:
+  namespace: default
+
+noctel-worker-file:
+  replicaCount: 1
+  version: "latest"
+  # Jenkinsfile in the source repo publishes to
+  # docker.io/noctel/noctel-api-file-worker — the source repo is named
+  # noctel-worker-file but the image name was kept as the historical
+  # noctel-api-file-worker so the image tag the chart pulls actually
+  # gets fresh builds. Source-repo rename is a separate cleanup.
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-api-file-worker
+    pullPolicy: IfNotPresent
+  securityContext:
+    fsGroup: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001

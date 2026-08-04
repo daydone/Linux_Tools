@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-apiserver
+  namespace: monitoring
+  labels:
+    component: kube-apiserver
+spec:
+  selector:
+    matchLabels:
+      component: kube-apiserver
+  namespaceSelector:
+    matchNames:
+    - default
+  endpoints:
+  - port: https
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kubernetes
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: "apiserver_(request_duration_seconds_bucket|response_sizes_bucket|watch_events_sizes_bucket)"
+      action: drop
+    honorLabels: true

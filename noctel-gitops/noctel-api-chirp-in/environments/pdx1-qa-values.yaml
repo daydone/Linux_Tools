@@ -1,0 +1,12 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-api-chirp-in:
+  version: "latest"
+  replicaCount: 3
+  env:
+    CHIRPSTACK_REGION: pdx1

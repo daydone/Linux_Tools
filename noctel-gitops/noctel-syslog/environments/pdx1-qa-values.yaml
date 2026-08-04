@@ -1,0 +1,21 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-syslog:
+  version: "latest"
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  env:
+    SYSLOG_TLS_REQUIRE_CLIENT_CERT: "true"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi

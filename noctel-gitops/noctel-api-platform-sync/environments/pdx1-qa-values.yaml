@@ -1,0 +1,12 @@
+global:
+  namespace: qa
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-api-platform-sync:
+  enabled: true
+  replicaCount: 1
+  extraEnv:
+    - name: PLATFORM_SYNC_ENV
+      value: "qa"

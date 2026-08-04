@@ -1,0 +1,8 @@
+global:
+  namespace: default
+
+chirpstack-mosquitto:
+  version: "2.0.17"
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: noctel-api-lns-dev
+  namespace: argocd
+  labels:
+    environment: dev
+    component: noctel-api-lns
+spec:
+  project: noctel-dev
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: noctel-api-lns/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx2-dev-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

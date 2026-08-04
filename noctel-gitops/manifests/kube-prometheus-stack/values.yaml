@@ -1,0 +1,2 @@
+# Empty values file - actual configuration comes from environments/pdx1/pdx1-monitoring-config.yaml
+# via ArgoCD valueFiles configuration

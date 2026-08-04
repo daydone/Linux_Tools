@@ -1,0 +1,29 @@
+global:
+  namespace: default
+  domain:
+    prefix: ""
+    base: telnoc.com
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-desk:
+  replicaCount: 1
+  version: "latest"
+  image:
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  env:
+    NODE_ENV: "production"
+    API_URL: ""
+    WS_URL: ""
+  ingress:
+    enabled: true
+    ingressClassName: ""
+    host: ""

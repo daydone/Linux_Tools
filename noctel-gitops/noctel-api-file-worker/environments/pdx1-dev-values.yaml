@@ -1,0 +1,11 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-file-worker:
+  version: "latest"
+  replicaCount: 3
+  env:

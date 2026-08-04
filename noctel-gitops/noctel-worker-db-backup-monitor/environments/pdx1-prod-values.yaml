@@ -1,0 +1,10 @@
+global:
+  namespace: prod
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-worker-db-backup-monitor:
+  enabled: true
+  # Prod uses the design-doc defaults: 25h / 7h / 10min thresholds.
+  # No extraEnv needed; the chart's defaults are the prod targets.

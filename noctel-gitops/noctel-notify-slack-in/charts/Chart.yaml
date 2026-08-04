@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-notify-slack-in
+description: Helm chart for noctel-notify-slack-in
+type: application
+version: 0.1.0
+appVersion: "latest"

@@ -1,0 +1,165 @@
+# Platform-wide environment for pdx1 / dev namespace.
+#
+# Consumed by every NocTel API / notify / worker service via:
+#   envFrom:
+#     - configMapRef: { name: noctel-platform-env }
+#     - secretRef:    { name: noctel-api-secrets  }
+#
+# Scope:
+#   - Non-secret, platform-wide, namespace-scoped.
+#   - URL-only convention: every external dep (DATABASE, REDIS, AMQP,
+#     ELASTICSEARCH) is a single URL with credentials — that URL lives
+#     in noctel-api-secrets. No *_HOST/*_PORT/*_USER/*_PASSWORD in
+#     this ConfigMap or in any values file.
+#   - Per-service overrides (PORT, HEALTH_PORT, per-service queue
+#     names) stay in each service's values.yaml `env:` block.
+#
+# Sync order: this ConfigMap must exist before dependent pods start.
+# The sync-wave annotation places it one wave earlier than the
+# deployments that mount it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noctel-platform-env
+  namespace: dev
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  # ── Runtime ─────────────────────────────────────────────────────
+  NODE_ENV: development
+  LOG_LEVEL: info
+  # Where this pod is running. Canonical platform-level identifiers
+  # consumed by any service that needs to qualify output by env —
+  # the Slack test endpoint prefixes the test message with
+  # [pdx1-dev] so operators see which env fired it. Prod
+  # intentionally omits the tag (production is the baseline).
+  # OTEL_RESOURCE_ATTRIBUTES is derived from these, not the other
+  # way around.
+  CLUSTER: pdx1
+  NAMESPACE: dev
+
+  # ClickHouse (ClickStack) for SIP traces. CLICKHOUSE_URL lives in
+  # noctel-api-secrets (manual / 1Password) so it can carry creds later.
+  # Database is non-secret + per-namespace, so it stays here.
+  CLICKHOUSE_DATABASE: noctel_trace_dev
+
+  # ── Platform URLs (no credentials) ──────────────────────────────
+  # GATEWAY_URL is embedded in EXTERNAL links (file/logo URLs, invoice
+  # links) so it must be the public, browser-reachable hostname, NOT the
+  # in-cluster service DNS. Kept in sync with PUB_NTAPI_URL below.
+  # TODO: GATEWAY_URL and PUB_NTAPI_URL are redundant (both = public API
+  # base URL). Consolidate onto PUB_NTAPI_URL: migrate the GATEWAY_URL
+  # consumers (noctel-standards file-url-resolver.js, noctel-api-account
+  # logo-url.js, noctel-api-billing invoice route) then drop GATEWAY_URL.
+  GATEWAY_URL:         https://pdx1-dev-api-gateway.telnoc.com
+  FRONTEND_URL:        https://pdx1-dev-desk.telnoc.com
+  PUB_NTAPI_URL:       https://pdx1-dev-api-gateway.telnoc.com
+  PUB_SLACK_IN_URL:    https://pdx1-dev-slack.telnoc.com
+  SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+
+  # ── Service-to-service URLs (internal cluster DNS) ──────────────
+  # Backend services call peers directly using service-secret signing;
+  # do NOT go through the gateway for backend-to-backend calls.
+  SERVICE_ACCOUNT_URL:    http://noctel-api-account:7110
+  SERVICE_ACTIONS_URL:    http://noctel-api-actions:7272
+  SERVICE_BILLING_URL:    http://noctel-api-billing:7180
+  SERVICE_CACHE_SYNC_URL: http://noctel-api-cache-sync:7190
+  SERVICE_CNAM_URL:       http://noctel-api-cnam:7340
+  SERVICE_DEVICES_URL:    http://noctel-api-devices:7230
+  SERVICE_DEX_URL:        http://noctel-api-dex:7140
+  SERVICE_E911_URL:       http://noctel-api-e911:7350
+  SERVICE_FLOW_URL:       http://noctel-api-flow:7240
+  SERVICE_MAILBOX_URL:    http://noctel-api-mailbox:7150
+  SERVICE_MESSAGING_URL:  http://noctel-api-messaging:7330
+  SERVICE_MONITOR_URL:    http://noctel-api-monitor:7260
+  SERVICE_NOTIFY_URL:     http://noctel-api-notify:7130
+  SERVICE_NUMBERS_URL:    http://noctel-api-numbers:7310
+  SERVICE_PORTING_URL:    http://noctel-api-porting:7320
+  SERVICE_REALTIME_URL:   http://noctel-api-realtime:7210
+  SERVICE_STORAGE_URL:    http://noctel-api-storage:7170
+  SERVICE_SUPER_URL:      http://noctel-api-super:7271
+  SERVICE_TALK_URL:       http://noctel-api-talk:7200
+  SERVICE_WIREGUARD_URL:  http://noctel-api-wireguard:7270
+  SERVICE_WORKFLOW_URL:   http://noctel-api-workflow:7160
+
+  # ── FaxBack ATA Connector (shared with legacy FMA) ─────────────
+  # Single physical FaxBack server at 10.0.90.27:71. Shared with
+  # the legacy FMA system; noctel-api-fma must filter mutating
+  # FaxBack calls to platform-owned FMAs (see service CLAUDE.md).
+  FAXBACK_API_URL: http://10.0.90.27:71
+
+  # ── History (ES audit stream tuning, consumed fleet-wide) ───────
+  HISTORY_ENABLED:         "1"
+  HISTORY_READS:           "0"
+  HISTORY_WRITES:          "1"
+  HISTORY_BULK:            "1"
+  HISTORY_PII_UNMASK:      "0"
+  HISTORY_EXCHANGE:        noctel.history
+  HISTORY_QUEUE:           history.index
+  HISTORY_RETENTION_DAYS:  "90"
+  HISTORY_ROLLOVER_GB:     "10"
+  HISTORY_EXCLUDE_TABLES:  "session,refresh_token,rate_limit,api_key_usage_log,schema_migrations,noctel_migrations"
+
+  # ── JWT TTL ─────────────────────────────────────────────────────
+  # Without this the noctel-api-account code falls back to a 5-minute
+  # access token (config.js default), so the desk's proactive
+  # refresh fires every 4 minutes and a typical session generates
+  # hundreds of /refresh calls per hour. 30m is the B2B sweet spot —
+  # 6x fewer refreshes than 5m without an unreasonable stale-creds
+  # window when a user is disabled. Refresh tokens stay 30d.
+  #
+  # The KeyDB token blocklist (jwt-blocklist.js) sets entry TTL =
+  # JWT_ACCESS_EXPIRES_IN so a revoked token is rejected for the
+  # rest of its natural life. The two values MUST match.
+  #
+  # NB: a previous archived configmap used JWT_ACCESS_EXPIRATION_TIME
+  # — different name, ignored by the code.
+  JWT_ACCESS_EXPIRES_IN:  30m
+  JWT_REFRESH_EXPIRES_IN: 30d
+  
+  # ── SIP / Provisioning ──────────────────────────────────────────
+  # The ONE platform-wide digest realm. sip-credentials.js mints every
+  # HA1 = MD5(username:SIP_REALM:secret); the bare-metal SBC challenges
+  # the same realm. Pinned here so the code default (talk.noctel.com)
+  # never silently diverges from what the SBC challenges. Standardized
+  # on .net 2026-06-05 (the .com/.net split caused a lab auth outage).
+  SIP_REALM:              talk.noctel.net
+
+  # Phone-side DNS fallback so the realm name resolves on the handset where there
+  # is no real DNS for talk.noctel.net yet (dev lab). Comma-separated SBC IPs;
+  # noctel-provisioning renders these into the Poly dns.cache (sbc_dns[]). Leave
+  # UNSET in prod (real DNS/SRV resolves the realm). dev = the dev134/135 SBC pair.
+  SBC_DNS_FALLBACK:       "192.69.31.134,192.69.31.135"
+
+  # ── ANTHROPIC API ────────────────────────────────────────────────
+  # This enables the action editor import feature
+  IMPORT_ENABLED:         "true"
+
+  # ── WIREGUARD ────────────────────────────────────────────────────
+  # The services that are available within Wireguard
+  # WG_LNS is the internal IP within the WG pod that is DNAT sends
+  # traffic to at WG_CHIRPSTACK on MetalLB
+  WG_ENDPOINT_HOST:       "wg.telnoc.com"
+  WG_SERVER_ADDRESS:      "10.100.0.1/16"
+  WG_DATACENTER_ID:       "pdx-dev"
+  WG_LNS_VIP:             "10.100.0.2"
+  WG_CHIRPSTACK_IP:       "10.0.97.80"
+
+  # CHIRPSTACK
+  # Per-namespace ChirpStack core; same shape as prod. SERVER_ID's
+  # `pdx1-dev` prefix is parsed by noctel-worker-chirp-out to derive
+  # its region routing-key suffix. Added 2026-05-17 — without these
+  # keys the worker fails config validation at boot and crashloops.
+  CHIRPSTACK_URL:         "chirpstack-core.dev.svc.cluster.local:8080"
+  CHIRPSTACK_TLS:         "false"
+  CHIRPSTACK_SERVER_ID:   "pdx1-dev"
+
+  # ── OpenTelemetry ────────────────────────────────────────────────
+  BAD_NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.monitoring.svc.cluster.local:4317"
+  OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  OTEL_TRACES_EXPORTER: "otlp"
+  OTEL_METRICS_EXPORTER: "otlp"
+  OTEL_LOGS_EXPORTER: "otlp"
+  OTEL_RESOURCE_ATTRIBUTES: "k8s.namespace.name=dev,k8s.cluster.name=pdx1"
+

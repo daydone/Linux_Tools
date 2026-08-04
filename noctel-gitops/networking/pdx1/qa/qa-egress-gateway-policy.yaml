@@ -1,0 +1,28 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: qa-egress-to-external
+spec:
+  # Select all pods in qa namespace
+  selectors:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: qa
+
+  # Route all external traffic through the qa VLAN gateway
+  destinationCIDRs:
+  - "0.0.0.0/0"
+
+  # Don't SNAT internal cluster traffic
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "10.42.0.0/16"
+  - "10.43.0.0/16"
+
+  # Route through management VLAN gateway for internet access
+  # (qa VLAN is internal-only; management VLAN has internet path)
+  egressGateway:
+    egressIP: "10.0.95.10"
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"

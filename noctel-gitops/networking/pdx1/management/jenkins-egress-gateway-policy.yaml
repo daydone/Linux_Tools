@@ -1,0 +1,32 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: jenkins-egress-to-external
+  namespace: kube-system
+spec:
+  # Route all external traffic from Jenkins pods
+  selectors:
+  - podSelector:
+      matchLabels:
+        app.kubernetes.io/name: jenkins
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: jenkins
+
+  # Route all external traffic through the management VLAN gateway
+  destinationCIDRs:
+  - "0.0.0.0/0"
+
+  # Don't SNAT internal cluster traffic
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "10.42.0.0/16"
+  - "10.43.0.0/16"
+
+  # Route through management VLAN gateway (10.0.95.1)
+  # This allows Jenkins agents to reach external hosts like Bitbucket
+  egressGateway:
+    egressIP: "10.0.95.10"
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"

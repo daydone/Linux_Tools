@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: dnsmadeeasy
+  labels:
+    app.kubernetes.io/component: s3
+    app.kubernetes.io/instance: seaweedfs-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/version: "3.57"
+    helm.sh/chart: seaweedfs-0.1.0
+  name: seaweedfs-qa-s3
+  namespace: qa
+spec:
+  ingressClassName: traefik-qa
+  rules:
+  - host: s3-qa.telnoc.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: seaweedfs-qa-s3-service
+            port:
+              number: 8333
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - s3-qa.telnoc.com
+    secretName: s3-qa-telnoc-com-tls

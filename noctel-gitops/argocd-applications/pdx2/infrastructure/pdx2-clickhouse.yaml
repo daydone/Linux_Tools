@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: clickhouse-pdx2
+  namespace: argocd
+  labels:
+    cluster: pdx2
+    component: clickhouse
+spec:
+  project: default
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: clickhouse/charts
+    helm:
+      valueFiles:
+        - ../../../clickhouse/environments/pdx2-values.yaml
+  destination:
+    server: https://10.0.2.10:6443  # PDX2 cluster endpoint (TBD: update with actual endpoint)
+    namespace: clickhouse
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+# Phase 2 deployment notes:
+# - Uncomment and update destination.server with actual PDX2 cluster endpoint
+# - Ensure ZooKeeper cluster is deployed first in pdx1 (for replication coordination)
+# - Verify S3 connectivity from pdx2 cluster
+# - Test failover scenarios before promoting to production

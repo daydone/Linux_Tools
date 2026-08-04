@@ -1,0 +1,33 @@
+{{- if and (index .Values "seaweedfs" "externalMaster" "enabled") (index .Values "seaweedfs" "egressGateway" "enabled") }}
+---
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: seaweedfs-egress-{{ .Values.global.namespace | default "default" }}
+spec:
+  # Select filer and s3 pods in this namespace
+  selectors:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Values.global.namespace | default "default" }}
+    podSelector:
+      matchLabels:
+        component: filer
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: {{ .Values.global.namespace | default "default" }}
+    podSelector:
+      matchLabels:
+        component: s3
+
+  # Route to SeaweedFS control plane network (VLAN 650)
+  destinationCIDRs:
+  - "10.0.91.0/24"  # VLAN 650 - SeaweedFS control plane
+
+  # Use kworker0 as egress gateway (has bond0.650 on VLAN 650)
+  egressGateway:
+    interface: {{ index .Values "seaweedfs" "egressGateway" "interface" }}
+    nodeSelector:
+      matchLabels:
+        egress.seaweedfs: "true"
+{{- end }}

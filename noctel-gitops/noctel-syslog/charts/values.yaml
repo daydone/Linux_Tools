@@ -1,0 +1,51 @@
+global:
+  namespace: default
+
+noctel-syslog:
+  replicaCount: 1
+  version: "latest"
+  image:
+    pullPolicy: IfNotPresent
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  nodeSelector:
+    noctel/syslog-collector: "true"
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9380"
+  # CLUSTER / NAMESPACE come from the shared noctel-platform-env ConfigMap
+  # (envFrom in the deployment), not from here — per the platform env-var
+  # convention. Only service-specific config lives in env below.
+  env:
+    SYSLOG_UDP_PORT: "514"
+    SYSLOG_TCP_PORT: "514"
+    # TLS (mTLS 6514) is OFF until the device-cert CA is decided. Set this
+    # to "6514" and provide a ca.crt in the noctel-syslog-tls Secret to
+    # enable. The tls-tls/admin container+service ports are gated on this.
+    SYSLOG_TLS_PORT: "0"
+    SYSLOG_BIND: "0.0.0.0"
+    ADMIN_HTTP_PORT: "7380"
+    HEALTH_PORT: "9380"
+    RAW_INDEX_ENABLED: "true"
+    SOURCE_CACHE_MAX: "10000"
+    SYSLOG_TLS_REQUIRE_CLIENT_CERT: "true"
+    # Standard kubernetes.io/tls Secret keys (tls.crt / tls.key) + a ca.crt
+    # added for the client trust anchor.
+    SYSLOG_TLS_CERT_PATH: "/etc/noctel-syslog/tls.crt"
+    SYSLOG_TLS_KEY_PATH: "/etc/noctel-syslog/tls.key"
+    SYSLOG_TLS_CLIENT_CA_PATH: "/etc/noctel-syslog/ca.crt"
+  # Pre-provisioned per-namespace TLS material for the mTLS 6514 listener.
+  secretMounts:
+    - name: tls-certs
+      mountPath: /etc/noctel-syslog
+      secretName: noctel-syslog-tls
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi

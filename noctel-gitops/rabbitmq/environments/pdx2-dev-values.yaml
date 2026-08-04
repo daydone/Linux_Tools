@@ -1,0 +1,20 @@
+  version: "3.12"
+  replicaCount: 3
+  auth:
+    username: default_user_GFf1NhE9qf9PHnK9l9V
+    password: UgRDf4wakPfzowuk04Nqx_1s2xqOiZ15
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: longhorn
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  securityContext:
+    runAsUser: 1001
+    runAsGroup: 1001
+    fsGroup: 1001

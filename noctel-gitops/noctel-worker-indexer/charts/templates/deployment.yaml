@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "noctel-worker-indexer" "version" }}
+spec:
+  replicas: {{ index .Values "noctel-worker-indexer" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: noctel
+        version: {{ index .Values "noctel-worker-indexer" "version" }}
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - noctel
+              topologyKey: kubernetes.io/hostname
+
+      imagePullSecrets:
+      - name: harbor-pull
+      - name: dockerhub-secret
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "pdx-harbor.telnoc.com/noctel/{{ .Chart.Name }}:{{ index .Values "noctel-worker-indexer" "version" }}"
+        imagePullPolicy: Always
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- range $key, $value := index .Values "noctel-worker-indexer" "env" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- with index .Values "noctel-worker-indexer" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        ports:
+        - name: health
+          containerPort: {{ index .Values "noctel-worker-indexer" "healthPort" | default 9280 }}
+        # Liveness only: /live returns 200 unless a dependency exceeds its
+        # livenessTimeoutMs budget, so a transient DB/ES blip does NOT
+        # crash-loop the pod — it only restarts a genuinely hung process.
+        livenessProbe:
+          httpGet:
+            path: /live
+            port: {{ index .Values "noctel-worker-indexer" "healthPort" | default 9280 }}
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 4
+        # readinessProbe on /ready is deliberately NOT enabled yet: /ready
+        # currently 503s on mysql:disconnected because of the harness health
+        # latch fixed in noctel-standards (feature/db-selfheal-and-health).
+        # Once that fix is in the deployed image, add:
+        #   readinessProbe:
+        #     httpGet: { path: /ready, port: {{ index .Values "noctel-worker-indexer" "healthPort" | default 9280 }} }
+        #     initialDelaySeconds: 20
+        #     periodSeconds: 15
+        #     failureThreshold: 4
+        # Until then it would keep pods NotReady.

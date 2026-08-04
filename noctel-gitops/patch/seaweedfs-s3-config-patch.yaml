@@ -1,0 +1,26 @@
+# Patch to mount S3 config ConfigMap in SeaweedFS S3 API deployments
+# Apply with: kubectl patch deployment seaweedfs-s3 -n <namespace> --patch-file=...
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-s3
+spec:
+  template:
+    spec:
+      containers:
+      - name: seaweedfs-s3
+        args:
+        - s3
+        - -filer=seaweedfs-filer.svc.cluster.local:8888
+        - -ip.bind=0.0.0.0
+        - -port=8333
+        - -config=/etc/seaweedfs/s3_config.json
+        volumeMounts:
+        - name: s3-config
+          mountPath: /etc/seaweedfs
+          readOnly: true
+      volumes:
+      - name: s3-config
+        configMap:
+          name: seaweedfs-s3-config-dev  # Update per namespace

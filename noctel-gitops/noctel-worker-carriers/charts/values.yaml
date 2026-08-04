@@ -1,0 +1,56 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+# noctel-worker-carriers is the single async worker for every carrier /
+# provider interaction. The numbers capability service publishes
+# carriers.lookup.request / carriers.order.request; this worker runs the
+# slow provider calls, writes lookup results to Elasticsearch (with
+# attachments via noctel-api-storage) and reflects orders into inventory.
+noctel-worker-carriers:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-worker-carriers
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    # Carrier job exchange (topic, durable).
+    - name: CARRIERS_EXCHANGE
+      value: "noctel.carriers"
+    - name: AMQP_PREFETCH
+      value: "8"
+    # Lookup result index in Elasticsearch.
+    - name: CARRIERS_LOOKUP_INDEX
+      value: "carrier-lookups"
+    # Internal service base URLs for provider execution + attachments.
+    - name: SERVICE_NUMBERS_URL
+      value: "http://noctel-api-numbers:7310"
+    - name: SERVICE_PORTING_URL
+      value: "http://noctel-api-porting:7320"
+    - name: SERVICE_STORAGE_URL
+      value: "http://noctel-api-storage:7170"
+    # Worker tuning.
+    - name: LOOKUP_CONCURRENCY
+      value: "4"
+    - name: RETRY_ATTEMPTS
+      value: "3"
+    # Health (per MICROSERVICES_PORTS.md generic worker range).
+    - name: HEALTH_PORT
+      value: "9297"
+
+  metrics:
+    enabled: false
+    port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

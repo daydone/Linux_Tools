@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-env
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  env.js: |
+    window.env = {
+      NODE_ENV: '{{ index .Values "noctel-desk" "env" "NODE_ENV" }}',
+      API_URL: '{{ index .Values "noctel-desk" "env" "API_URL" }}',
+      WS_URL: '{{ index .Values "noctel-desk" "env" "WS_URL" }}',
+      ALLOW_MOCK_MODE: '{{ index .Values "noctel-desk" "env" "ALLOW_MOCK_MODE" | default "false" }}',
+      PROVISIONING_URL: '{{ index .Values "noctel-desk" "env" "PROVISIONING_URL" }}',
+      SLACK_IN_URL: '{{ index .Values "noctel-desk" "env" "SLACK_IN_URL" }}',
+      MAPBOX_TOKEN: '{{ index .Values "noctel-desk" "env" "MAPBOX_TOKEN" }}',
+      VERSION: '{{ index .Values "noctel-desk" "version" }}'
+    };

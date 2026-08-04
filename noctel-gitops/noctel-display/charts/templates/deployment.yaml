@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ index .Values "noctel-display" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "noctel/{{ .Chart.Name }}:{{ index .Values "noctel-display" "version" }}"
+        imagePullPolicy: {{ index .Values "noctel-display" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 3001
+          name: http
+          protocol: TCP
+        {{- with index .Values "noctel-display" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        # Pull REDIS_URL, JWT_*, SESSION_SECRET, etc. from the platform
+        # secret so the chart values don't carry plaintext credentials.
+        # env: below overrides envFrom for any service-specific keys —
+        # never re-set platform-shared values there or env: will shadow
+        # envFrom, leaking creds into gitops if the values config does.
+        #
+        # noctel-display-secrets carries display-specific keys
+        # (DB_PASSWORD, RABBITMQ_PASSWORD, ASSEMBLYAI/MAPBOX/OPENWEATHER
+        # API keys) that aren't shared platform-wide.
+        envFrom:
+          - secretRef:
+              name: noctel-api-secrets
+          - secretRef:
+              name: noctel-display-secrets
+        env:
+        {{- range $key, $value := index .Values "noctel-display" "env" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := index .Values "noctel-display" "secrets" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}

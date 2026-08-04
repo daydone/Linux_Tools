@@ -1,0 +1,19 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: telnoc.com
+
+noctel-worker-geolocation:
+  # Prod tracks :latest like dev/qa. The promotion gate is the
+  # ArgoCD app's lack of `syncPolicy.automated` (manual sync only)
+  # rather than a version pin here. Operator decides when prod
+  # picks up the latest image.
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: geolocation
+    CHIRPSTACK_SERVER_ID: pdx1-prod

@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-scheduler
+  namespace: monitoring
+  labels:
+    component: kube-scheduler
+spec:
+  selector:
+    matchLabels:
+      k3s-app: kube-scheduler
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true

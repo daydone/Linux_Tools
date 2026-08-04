@@ -1,0 +1,45 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-monitor:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7260"
+    HEALTH_PORT: "9260"
+    SERVICE_NAME: monitor
+    CACHE_FILL_ENABLED: "true"
+    MONITOR_INTERVAL_SECONDS: "30"
+    MONITOR_STATE_TTL_SECONDS: "120"
+    MONITOR_RUN_ON_START: "true"
+    # PROBE_KEYDB_URLS intentionally unset — registry.js uses
+    # envListWithFallback('PROBE_KEYDB_URLS', 'REDIS_URL'), and REDIS_URL
+    # is sourced from noctel-api-secrets via envFrom on the deployment.
+    # Setting it here would (a) shadow the Secret-sourced value and
+    # (b) leak the KeyDB password into plaintext gitops. Leave unset
+    # so the fallback fires.
+    PROBE_MYSQL_URLS: "mysql://dev-ddb.telnoc.com:3306"
+    # PROBE_RABBITMQ_URLS lives in noctel-api-secrets (envFrom on the
+    # deployment) so the dev_api password isn't in plaintext gitops.
+    # Don't re-add it here — k8s env: precedence wins over envFrom:
+    # so a value in this block would shadow the Secret-sourced one
+    # and revert the probe to anonymous (HTTP 401).
+    # PROBE_ELASTICSEARCH_URLS intentionally unset — registry.js uses
+    # envListWithFallback('PROBE_ELASTICSEARCH_URLS', 'ELASTICSEARCH_URL'),
+    # and ELASTICSEARCH_URL is sourced from noctel-api-secrets via
+    # envFrom (now carrying elastic:<password>@... since we enabled
+    # xpack.security on the cluster). Setting this explicitly would
+    # (a) shadow the Secret-sourced URL with auth, (b) need the
+    # password in plaintext gitops, AND (c) leave the probe doing
+    # anonymous requests against a now-secured ES — symptom: 401 +
+    # "Elasticsearch rejected the credentials" on /super/monitoring/es.
+    PROBE_KAMAILIO_HTTP_URLS: "http://kamailio.dev.svc.cluster.local:8080/RPC"
+    PROBE_ASTERISK_ARI_URLS: "http://asterisk.dev.svc.cluster.local:8088"
+    PROBE_STORAGE_HEALTH_URL: "http://noctel-api-storage.dev.svc.cluster.local:7170/storage/probe-health"
+  secrets:

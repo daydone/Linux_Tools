@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: grafana
+data:
+  elasticsearch-cluster.json: |
+    {
+      "annotations": {"list": [{"builtIn": 1, "datasource": {"type": "grafana", "uid": "-- Grafana --"}, "enable": true, "hide": true, "iconColor": "rgba(0, 211, 255, 1)", "name": "Annotations & Alerts", "type": "dashboard"}]},
+      "description": "Elasticsearch Cluster - Health, Shards, Performance",
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "gnetId": null,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "max": 1, "min": 0, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.5}, {"color": "green", "value": 1}]}}},
+          "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+          "id": 1,
+          "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "elasticsearch_cluster_health_status", "legendFormat": "", "refId": "A"}],
+          "title": "Cluster Status (1=green, 0.5=yellow, 0=red)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 2}, {"color": "green", "value": 3}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+          "id": 2,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "count(elasticsearch_nodes_info)", "legendFormat": "Nodes", "refId": "A"}],
+          "title": "Nodes Up (3 is healthy)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}, "unit": "short"}},
+          "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+          "id": 3,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "elasticsearch_unassigned_shards", "legendFormat": "Unassigned", "refId": "A"}],
+          "title": "Unassigned Shards (Alert if >0)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 70}, {"color": "red", "value": 85}]}, "unit": "percent"}},
+          "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+          "id": 4,
+          "options": {"colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "text": {}, "textMode": null},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "(elasticsearch_jvm_memory_used_bytes{type=\"heap\"} / elasticsearch_jvm_memory_max_bytes{type=\"heap\"}) * 100", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "JVM Heap Pressure per Node (4GB limit)",
+          "type": "stat"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "id": 5,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "elasticsearch_indices_store_size_bytes", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "Index Size per Node (10GB limit each)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "bytes"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+          "id": 6,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "elasticsearch_jvm_memory_used_bytes{type=\"heap\"}", "legendFormat": "{{node}} Heap", "refId": "A"}],
+          "title": "JVM Heap Usage Per Node",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "docs/s"}},
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+          "id": 7,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "rate(elasticsearch_indices_indexing_index_total[5m])", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "Indexing Rate per Node",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "barAlignment": 0, "drawStyle": "line", "fillOpacity": 0, "gradientMode": "none", "hideFrom": {"tooltip": false, "viz": false, "legend": false}, "lineInterpolation": "linear", "lineWidth": 1, "pointSize": 5, "scaleDistribution": {"type": "linear"}, "showPoints": "never", "spanNulls": true, "stacking": {"group": "A", "mode": "none"}, "thresholdsStyle": {"mode": "off"}}, "mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "queries/s"}},
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+          "id": 8,
+          "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "right"}, "tooltip": {"mode": "multi", "sort": "none"}},
+          "pluginVersion": "10.0.0",
+          "targets": [{"expr": "rate(elasticsearch_indices_search_query_total[5m])", "legendFormat": "{{node}}", "refId": "A"}],
+          "title": "Search Rate per Node",
+          "type": "timeseries"
+        }
+      ],
+      "schemaVersion": 37,
+      "style": "dark",
+      "tags": ["data-layer", "search", "elasticsearch"],
+      "templating": {"list": []},
+      "time": {"from": "now-6h", "to": "now"},
+      "timepicker": {},
+      "timezone": "browser",
+      "title": "Elasticsearch Cluster - Prod",
+      "uid": "elasticsearch-cluster-prod",
+      "version": 0
+    }

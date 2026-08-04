@@ -1,0 +1,127 @@
+global:
+  namespace: qa
+
+rabbitmq:
+    # Cluster configuration
+    image: "rabbitmq:4.1.1-management"
+    replicaCount: 3
+    # Resource configuration
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    # Storage configuration
+    persistence:
+      storage: "20Gi"
+      storageClass: "longhorn"
+    # Per-namespace broker definitions — loaded at broker startup via
+    # management.load_definitions. No users cross namespace boundaries;
+    # qa users live here, dev users live in pdx1-dev-config.yaml.
+    #
+    # Service plaintexts live in the external secrets vault as
+    # AMQP_URL inside noctel-api-secrets (namespace-scoped). The
+    # password_hash below MUST correspond to the plaintext encoded in
+    # that AMQP_URL. On rotation: generate a new plaintext, hash it
+    # with `charts/rabbitmq/bin/gen-hash.py`, update BOTH the vault's
+    # AMQP_URL AND the password_hash here in the same change.
+    definitions:
+      # Only qa_api — shared service-to-service user. Every noctel
+      # service pulls AMQP_URL from the noctel-rabbitmq Secret which is
+      # templated from apiUser above, so they all auth as qa_api.
+      # No admin user in definitions.json; cluster admin tasks go
+      # through kubectl exec + rabbitmqctl.
+      users:
+        - name: qa_api
+          password_hash: "1ywQJfJ07HPUNzvknITg0pt296aqsue+9M6DVxM7Af+5UF8A"
+          hashing_algorithm: rabbit_password_hashing_sha256
+          # `monitoring` tag grants read-only access to the management
+          # API (port 15672). Required so noctel-api-monitor's broker
+          # health probe can authenticate without granting full admin.
+          # Set live 2026-05-03 via `rabbitmqctl set_user_tags`; this
+          # entry persists the change so a definitions reload doesn't
+          # revert it.
+          tags: ["monitoring"]
+          limits: {}
+      vhosts:
+        - name: "/"
+          description: "Default virtual host"
+          metadata:
+            description: "Default virtual host"
+            tags: []
+            default_queue_type: classic
+          tags: []
+      permissions:
+        - user: qa_api
+          vhost: "/"
+          configure: ".*"
+          write: ".*"
+          read: ".*"
+      globalParameters:
+        - name: cluster_name
+          value: ha-rabbit-qa
+      queues:
+        - name: mail-out
+          vhost: "/"
+          durable: true
+          auto_delete: false
+          arguments:
+            x-queue-type: classic
+        - name: chirp-pdx1-qa
+          vhost: "/"
+          durable: true
+          auto_delete: false
+          arguments:
+            x-message-ttl: 86400000
+            x-queue-type: classic
+        - name: lns-operations-pdx1-qa
+          vhost: "/"
+          durable: true
+          auto_delete: false
+          arguments:
+            x-dead-letter-exchange: ""
+            x-dead-letter-routing-key: lns-operations-pdx1-qa-dlq
+            x-message-ttl: 3600000
+            x-queue-type: classic
+        - name: lns-operations-pdx1-qa-dlq
+          vhost: "/"
+          durable: true
+          auto_delete: false
+          arguments:
+            x-message-ttl: 86400000
+            x-queue-type: classic
+      exchanges:
+        - name: history_events
+          vhost: "/"
+          type: topic
+          durable: true
+          auto_delete: false
+          internal: false
+          arguments: {}
+        - name: lns-operations
+          vhost: "/"
+          type: direct
+          durable: true
+          auto_delete: false
+          internal: false
+          arguments: {}
+      bindings:
+        - source: lns-operations
+          vhost: "/"
+          destination: lns-operations-pdx1-qa
+          destination_type: queue
+          routing_key: pdx1-qa
+          arguments: {}
+    # Environment-specific cluster name
+    clusterName: "ha-rabbit-qa"
+    # Management UI ingress
+    management:
+      ingressRoute:
+        enabled: true
+        host: pdx1-qa-rabbitmq.mocktel.com
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    externalLoadBalancerIP: 10.0.98.161
+    metalLBPool: qa-vlan-pool

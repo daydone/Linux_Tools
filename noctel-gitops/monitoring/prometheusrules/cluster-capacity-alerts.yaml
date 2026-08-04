@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cluster-capacity-alerts
+  namespace: monitoring
+  labels:
+    component: cluster-capacity
+spec:
+  groups:
+  - name: cluster-capacity
+    interval: 30s
+    rules:
+    - alert: PersistentVolumeUsageHigh
+      expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.85
+      for: 15m
+      labels:
+        severity: warning
+        component: cluster-capacity
+      annotations:
+        summary: "PVC usage exceeds 85%"
+        description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} is {{ $value | humanizePercentage }} full"
+
+    - alert: PersistentVolumeUsageCritical
+      expr: (kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes) > 0.95
+      for: 5m
+      labels:
+        severity: critical
+        component: cluster-capacity
+      annotations:
+        summary: "PVC usage exceeds 95%"
+        description: "PVC {{ $labels.persistentvolumeclaim }} in namespace {{ $labels.namespace }} is {{ $value | humanizePercentage }} full, imminent out-of-space"
+
+    - alert: NodeCPUCapacityNearing
+      expr: (sum(rate(node_cpu_seconds_total{mode!="idle"}[5m])) by (instance) / on(instance) count(node_cpu_seconds_total{mode="idle"}) by (instance)) > 0.85
+      for: 15m
+      labels:
+        severity: warning
+        component: cluster-capacity
+      annotations:
+        summary: "Node CPU approaching capacity"
+        description: "Node {{ $labels.instance }} is at {{ $value | humanizePercentage }} CPU utilization"
+
+    - alert: NodeMemoryCapacityNearing
+      expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+      for: 15m
+      labels:
+        severity: warning
+        component: cluster-capacity
+      annotations:
+        summary: "Node memory approaching capacity"
+        description: "Node {{ $labels.instance }} is at {{ $value | humanizePercentage }} memory utilization"
+
+    - alert: ClusterHasNoCapacityForNewPods
+      expr: sum(kube_node_status_allocatable{resource="pods"}) - count(kube_pod_info) < 50
+      for: 5m
+      labels:
+        severity: warning
+        component: cluster-capacity
+      annotations:
+        summary: "Cluster pod capacity nearly exhausted"
+        description: "Cluster has only {{ $value }} available pod slots remaining"

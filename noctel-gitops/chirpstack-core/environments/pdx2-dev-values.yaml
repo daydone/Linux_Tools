@@ -1,0 +1,29 @@
+  version: "4.7.0"
+  replicaCount: 0
+  image:
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+  env:
+    RUST_LOG: info
+  config:
+    database:
+      host: "chirpstack-postgresql.telnoc.com"
+      port: "5432"
+      name: "chirpstack"
+      user: "chirpstack"
+      password: "vampires-raiders-rowdy"
+    redis:
+      url: "redis://redis-master.dev.svc.cluster.local:6379"
+    mqtt:
+      server: "tcp://chirpstack-mosquitto.dev.svc.cluster.local:1883"

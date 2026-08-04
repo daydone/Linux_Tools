@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-prod-vlan-egress
+  namespace: prod
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow egress to prod VLAN (10.0.99.0/24)
+  - to:
+    - ipBlock:
+        cidr: 10.0.99.0/24
+  # Allow egress within cluster (pod-to-pod)
+  - to:
+    - namespaceSelector: {}
+  # Allow egress to external networks (Kubernetes API, etc)
+  - to:
+    - ipBlock:
+        cidr: 10.0.95.0/24

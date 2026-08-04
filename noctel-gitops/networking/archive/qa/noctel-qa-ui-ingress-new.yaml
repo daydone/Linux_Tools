@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    argocd.argoproj.io/tracking-id: noctel-prod:networking.k8s.io/Ingress:prod/noctel-prod-ui-ingress
+    field.cattle.io/publicEndpoints: '[{"addresses":["10.0.99.21"],"port":443,"protocol":"HTTPS","serviceName":"prod:noctel-prod-ui-service","ingressName":"prod:noctel-prod-ui-ingress","hostname":"pdx2-prod-portal.telnoc.com","path":"/","allNodes":false}]'
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"networking.k8s.io/v1","kind":"Ingress","metadata":{"annotations":{"argocd.argoproj.io/tracking-id":"noctel-prod:networking.k8s.io/Ingress:prod/noctel-prod-ui-ingress","traefik.ingress.kubernetes.io/router.tls.certresolver":"dnsmadeeasy"},"labels":{"app.kubernetes.io/component":"ui","app.kubernetes.io/instance":"noctel-prod","app.kubernetes.io/managed-by":"Helm","app.kubernetes.io/name":"noctel-now","app.kubernetes.io/part-of":"noctel-now","app.kubernetes.io/version":"1.0.0","helm.sh/chart":"noctel-now-0.1.0"},"name":"noctel-prod-ui-ingress","namespace":"prod"},"spec":{"ingressClassName":"traefik-prod","rules":[{"host":"pdx2-prod-portal.telnoc.com","http":{"paths":[{"backend":{"service":{"name":"noctel-prod-ui-service","port":{"number":80}}},"path":"/","pathType":"Prefix"}]}}],"tls":[{"hosts":["pdx2-prod-portal.telnoc.com"]}]}}
+    meta.helm.sh/release-name: noctel-prod
+    meta.helm.sh/release-namespace: prod
+    traefik.ingress.kubernetes.io/router.tls.certresolver: dnsmadeeasy
+  creationTimestamp: "2025-08-09T03:04:39Z"
+  generation: 1
+  labels:
+    app.kubernetes.io/component: ui
+    app.kubernetes.io/instance: noctel-prod
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: noctel-now
+    app.kubernetes.io/part-of: noctel-now
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: noctel-now-0.1.0
+  name: noctel-prod-ui-ingress
+  namespace: prod
+  resourceVersion: "23609921"
+  uid: 728688e6-a28b-4a7f-a6cf-062d43cc7965
+spec:
+  ingressClassName: traefik-prod
+  rules:
+  - host: pdx2-prod-portal.telnoc.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: noctel-prod-ui-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - pdx2-prod-portal.telnoc.com
+status:
+  loadBalancer:
+    ingress:
+    - ip: 10.0.99.21

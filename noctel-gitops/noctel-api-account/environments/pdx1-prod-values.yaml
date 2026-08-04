@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-account:
+  version: "latest"
+  replicaCount: 3
+  env:
+    # Public desk URL embedded in verify-email, password-reset, and
+    # accept-invitation links the service emails out. Must be the
+    # public hostname so external recipients can click through; the
+    # internal pdx1-prod-desk.noctel.com isn't reachable outside the VPN.
+    FRONTEND_URL: "https://desk.noctel.com"

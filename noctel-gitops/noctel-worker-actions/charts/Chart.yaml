@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-worker-actions
+description: noctel-worker-actions - Stateless action graph orchestrator for the Actions Framework
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

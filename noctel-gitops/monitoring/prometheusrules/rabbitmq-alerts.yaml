@@ -1,0 +1,63 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: rabbitmq-alerts
+  namespace: monitoring
+  labels:
+    prometheus: kube-prometheus
+    component: rabbitmq
+spec:
+  groups:
+  - name: rabbitmq.rules
+    interval: 30s
+    rules:
+    - alert: RabbitMQDown
+      expr: up{job="rabbitmq"} == 0
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: "RabbitMQ is down"
+        description: |
+          RabbitMQ cluster is unreachable.
+          kubectl get pods -n prod -l app.kubernetes.io/name=rabbitmq
+          kubectl describe statefulset rabbitmq -n prod
+
+    - alert: RabbitMQHighQueueDepth
+      expr: rabbitmq_queue_messages{namespace="prod"} > 10000
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Queue {{ $labels.queue }} has high depth ({{ $value | humanize }})"
+        description: |
+          Queue {{ $labels.queue }} has {{ $value | humanize }} messages.
+          A consumer may be stuck or unable to keep up with publisher rate.
+          Check consumer pod logs for errors.
+
+    - alert: RabbitMQNoConsumers
+      expr: rabbitmq_queue_consumers{namespace="prod"} == 0 and rabbitmq_queue_messages{namespace="prod"} > 100
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Queue {{ $labels.queue }} has no consumers"
+        description: |
+          Queue {{ $labels.queue }} has {{ .Value | humanize }} messages but zero active consumers.
+          Service consuming from this queue may be down or crashed.
+          Check: kubectl get pods -n prod -l <service-label>
+
+    - alert: RabbitMQMemoryHigh
+      expr: |
+        rabbitmq_process_resident_memory_bytes{namespace="prod"}
+        /
+        rabbitmq_resident_memory_limit_bytes{namespace="prod"}
+        > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "RabbitMQ memory >80%"
+        description: |
+          RabbitMQ memory usage is over 80%. Risk of connection blocking and message loss.
+          Consider increasing memory limit or investigating for memory leaks.

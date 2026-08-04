@@ -1,0 +1,11 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-api-workflow:
+  version: "latest"
+  replicaCount: 1
+  env:

@@ -1,0 +1,26 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-worker-indexer:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: noctel-worker-indexer
+    REDIS_KEY_PREFIX: "noctel:"
+    # Dev keeps boot-time drift repair ON (small indices, no on-call) —
+    # the chart default went alert-only after the 2026-07-13 prod hang.
+    INDEXER_AUTO_REPAIR: "1"
+    # History publisher migrated 2026-05-26 from `noctel.history` onto
+    # `noctel.events` (history.<entity>.<verb> routing keys). Consumer
+    # binding must match or history events accumulate in an exchange
+    # nothing reads. Queue is renamed `.v2` so AMQP doesn't reject the
+    # rebind on the previously-declared durable queue.
+    HISTORY_EXCHANGE: noctel.events
+    HISTORY_QUEUE: history.index.v2
+  secrets:

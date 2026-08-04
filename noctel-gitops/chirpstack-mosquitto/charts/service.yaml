@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: chirpstack-mosquitto-qa
+  namespace: qa
+  labels:
+    app.kubernetes.io/component: chirpstack-mosquitto
+    app.kubernetes.io/instance: noctel-qa
+    app.kubernetes.io/name: noctel
+spec:
+  type: ClusterIP
+  ports:
+  - port: 1883
+    targetPort: 1883
+    protocol: TCP
+    name: mqtt
+  selector:
+    app.kubernetes.io/component: chirpstack-mosquitto
+    app.kubernetes.io/instance: noctel-qa
+    app.kubernetes.io/name: noctel

@@ -1,0 +1,18 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-worker-cleanup:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7250"
+    HEALTH_PORT: "9250"
+    HOST: "0.0.0.0"
+    SERVICE_NAME: cleanup-worker
+  secrets:

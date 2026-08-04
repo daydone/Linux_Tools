@@ -1,0 +1,189 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "chirpstack-core" "version" }}
+spec:
+  replicas: {{ index .Values "chirpstack-core" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        version: {{ index .Values "chirpstack-core" "version" }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- with index .Values "chirpstack-core" "nodeSelector" }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with index .Values "chirpstack-core" "affinity" }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # ChirpStack v4 reads chirpstack.toml verbatim — its TOML parser
+      # does NOT substitute env-var references like ${AMQP_URL}. The
+      # url was being passed to the URL parser as a literal string and
+      # failing with "relative URL without a base". This initContainer
+      # runs envsubst against the template configmap (mounted at
+      # /tmp/template) and writes the rendered config to a shared
+      # emptyDir that the main container reads from. Pulls all env
+      # via envFrom so any future ${VAR} placeholders we add to the
+      # template get resolved without a chart change.
+      initContainers:
+      - name: render-config
+        # nginx:alpine ships envsubst pre-installed (nginx uses it
+        # itself for config templating) so we don't need apk add at
+        # pod start. The earlier alpine:3.20 + `apk add gettext`
+        # version hung indefinitely in prod because pod egress to
+        # dl-cdn.alpinelinux.org is blocked by network policy.
+        image: nginx:1.27-alpine
+        command:
+        - sh
+        - -c
+        - |
+          set -eu
+
+          # ChirpStack 4.7's Rust AMQP client (lapin) is strict about
+          # vhost parsing: a URL that ends with bare "/" (which is how
+          # the shared AMQP_URL is stored in noctel-api-secrets, and
+          # what amqplib in Node-land cheerfully treats as the default
+          # vhost "/") reaches lapin as the EMPTY-STRING vhost. RabbitMQ
+          # then refuses with "NOT_ALLOWED - vhost  not found".
+          #
+          # Normalize for chirpstack-core only — strip any trailing
+          # slash and append the URL-encoded default vhost (%2F).
+          # The shared Secret stays unchanged; this rewrite is scoped
+          # to the pod-local rendered config.
+          export AMQP_URL_NORMALIZED="${AMQP_URL%/}/%2F"
+
+          # Render every .toml in the template dir. The configmap now
+          # carries multiple keys (chirpstack.toml + region_<name>.toml
+          # per enabled region). ChirpStack v4 auto-loads every .toml
+          # under the config dir, so we just need to ensure each one
+          # lands in /etc/chirpstack/ after envsubst. Region files
+          # have no ${VAR} placeholders today — envsubst is a no-op
+          # for those — but running it uniformly keeps the rule
+          # simple ("everything goes through envsubst").
+          for src in /tmp/template/*.toml; do
+            dst="/etc/chirpstack/$(basename "$src")"
+            envsubst < "$src" > "$dst"
+          done
+
+          echo "Rendered files in /etc/chirpstack/:"
+          ls -la /etc/chirpstack/
+          # Credential-masked dump of the main config for quick
+          # confirmation that ${VAR} substitution actually ran. Use
+          # '#' as the s delimiter so the protocol-name alternation
+          # doesn't collide with the s/// pipe delimiter.
+          echo "--- chirpstack.toml (credentials masked) ---"
+          sed -E 's#(amqp|amqps|postgres|redis|http|https)://[^@]+@#\1://***:***@#g' /etc/chirpstack/chirpstack.toml | head -80
+          echo "--- end ---"
+        envFrom:
+        - secretRef:
+            name: noctel-api-secrets
+            optional: false
+        - configMapRef:
+            name: noctel-platform-env
+            optional: true
+        volumeMounts:
+        - name: config-template
+          mountPath: /tmp/template
+          readOnly: true
+        - name: config
+          mountPath: /etc/chirpstack
+      containers:
+      - name: chirpstack
+        image: "chirpstack/chirpstack:{{ index .Values "chirpstack-core" "version" }}"
+        imagePullPolicy: {{ index .Values "chirpstack-core" "image" "pullPolicy" }}
+        args:
+        - --config
+        - /etc/chirpstack
+        ports:
+        - containerPort: 8080
+          name: dashboard
+          protocol: TCP
+        {{- with index .Values "chirpstack-core" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-core" "livenessProbe" }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-core" "readinessProbe" }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-core" "securityContext" }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-core" "env" }}
+        env:
+        {{- range $key, $value := . }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+        # Substitution of ${AMQP_URL} etc. happens in the initContainer
+        # above; the main container reads the already-rendered config
+        # from the shared emptyDir. envFrom is still useful for any
+        # ChirpStack feature that itself reads env at runtime (e.g.
+        # log targets) but is no longer load-bearing for the TOML.
+        envFrom:
+        - secretRef:
+            name: noctel-api-secrets
+            optional: false
+        - configMapRef:
+            name: noctel-platform-env
+            optional: true
+        volumeMounts:
+        - name: config
+          mountPath: /etc/chirpstack
+          readOnly: true
+      {{- if index .Values "chirpstack-core" "redis" "sidecar" "enabled" }}
+      - name: redis
+        image: "redis:7-alpine"
+        ports:
+        - containerPort: 6379
+          name: redis
+          protocol: TCP
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      {{- end }}
+      volumes:
+      # Raw template configmap — mounted only into the initContainer.
+      - name: config-template
+        configMap:
+          name: {{ .Chart.Name }}-config
+      # Rendered config emptyDir — populated by the initContainer,
+      # read by the main container.
+      - name: config
+        emptyDir: {}
+      {{- if index .Values "chirpstack-core" "redis" "sidecar" "enabled" }}
+      {{- if index .Values "chirpstack-core" "redis" "sidecar" "persistence" "enabled" }}
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: {{ .Chart.Name }}-redis
+      {{- else }}
+      - name: redis-data
+        emptyDir: {}
+      {{- end }}
+      {{- end }}

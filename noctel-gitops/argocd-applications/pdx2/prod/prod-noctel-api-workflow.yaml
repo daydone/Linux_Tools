@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: noctel-api-workflow-prod
+  namespace: argocd
+  labels:
+    environment: prod
+    component: noctel-api-workflow
+spec:
+  project: noctel-prod
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: noctel-api-workflow/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx2-prod-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

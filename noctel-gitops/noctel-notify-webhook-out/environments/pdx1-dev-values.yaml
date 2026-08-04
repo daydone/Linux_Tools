@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-notify-webhook-out:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9409"
+    SERVICE_NAME: noctel-notify-webhook-out
+  secrets:

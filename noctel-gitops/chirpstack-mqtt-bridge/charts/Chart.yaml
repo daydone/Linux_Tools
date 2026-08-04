@@ -1,0 +1,11 @@
+apiVersion: v2
+name: chirpstack-mqtt-bridge
+description: |
+  Subscribes to chirpstack-core's MQTT integration on mosquitto and
+  republishes every device event to the chirpstack-events topic
+  exchange on RabbitMQ. Exists because chirpstack-core 4.7's built-in
+  AMQP integration (lapin) silently drops publishes in this environment
+  while its MQTT integration is rock-solid.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

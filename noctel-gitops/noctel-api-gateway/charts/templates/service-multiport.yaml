@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+  annotations:
+    metallb.universe.tf/address-pool: {{ .Values.global.namespace }}-vlan-pool
+spec:
+  type: LoadBalancer
+  {{- if eq .Values.global.cluster "pdx1" }}
+  {{- if eq .Values.global.namespace "dev" }}
+  loadBalancerIP: 10.0.97.155
+  {{- else if eq .Values.global.namespace "qa" }}
+  loadBalancerIP: 10.0.98.155
+  {{- else if eq .Values.global.namespace "prod" }}
+  loadBalancerIP: 10.0.99.155
+  {{- end }}
+  {{- end }}
+  ports:
+  - port: 7100
+    targetPort: 7100
+    protocol: TCP
+    name: api
+  {{- if .Values.tls.enabled }}
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 443
+    protocol: TCP
+    name: https
+  {{- end }}
+  - port: 9100
+    targetPort: 9100
+    protocol: TCP
+    name: metrics
+  selector:
+    app: {{ .Chart.Name }}

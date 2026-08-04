@@ -1,0 +1,32 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+ingressRoute:
+  enabled: true
+  host: pdx1-dev-api-gateway.telnoc.com
+
+traefik:
+  tlsForwarding:
+    enabled: false
+
+tls:
+  enabled: false
+  host: pdx1-dev-api-gateway.telnoc.com
+
+noctel-api-gateway:
+  version: "latest"
+  replicaCount: 3
+  ingress:
+    enabled: true
+    ingressClassName: traefik-dev
+    host: pdx1-dev-api-gateway.telnoc.com
+    metricsHost: pdx1-dev-api-gateway-metrics.telnoc.com
+  env:
+    HTTP_PORT: "7100"
+    HEALTH_PORT: "9100"
+    JWT_ALGORITHM: "HS256"
+    CORS_ORIGIN: "*"

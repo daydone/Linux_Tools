@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "noctel-api-monitor" "version" }}
+spec:
+  replicas: {{ index .Values "noctel-api-monitor" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: noctel
+        version: {{ index .Values "noctel-api-monitor" "version" }}
+    spec:
+      serviceAccountName: {{ .Chart.Name }}
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - noctel
+              topologyKey: kubernetes.io/hostname
+
+      imagePullSecrets:
+      - name: harbor-pull
+      - name: dockerhub-secret
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "pdx-harbor.telnoc.com/noctel/{{ .Chart.Name }}:{{ index .Values "noctel-api-monitor" "version" }}"
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 7260
+          protocol: TCP
+        - name: health
+          containerPort: 9260
+          protocol: TCP
+        envFrom:
+          - configMapRef:
+              name: noctel-platform-env
+          - secretRef:
+              name: noctel-api-secrets
+        env:
+        {{- range $key, $value := index .Values "noctel-api-monitor" "env" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        {{- range $key, $value := index .Values "noctel-api-monitor" "secrets" }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: health
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        {{- with index .Values "noctel-api-monitor" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}

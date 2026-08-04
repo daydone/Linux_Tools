@@ -1,0 +1,43 @@
+global:
+  namespace: prod
+
+chirpstack-gateway-bridge:
+    # Bumped 2026-05-18 from 4.0.9 → 4.0.11 to pick up the BasicStation
+    # downlink coding-rate fix. 4.0.9 emitted `cr=0` in dnframe messages
+    # to BasicStation gateways; basicstation rejects with
+    # "[timestamp_counter_correction] wrong coding rate (0)" before
+    # ever transmitting, so OTAA JoinAccepts silently never reach the
+    # device. 4.0.10/4.0.11 set cr=1 (4/5) correctly. Tracked upstream
+    # at chirpstack/chirpstack-gateway-bridge release notes.
+    version: "4.0.11"
+    # All three pods share a single MQTT client_id
+    # ("gateway-bridge-noctel-prod" — hardcoded in the bridge
+    # configmap, see chirpstack-gateway-bridge.toml). MQTT requires
+    # unique client_ids per broker; whenever two pods race to
+    # reconnect to the same broker they kick each other off with
+    # "Client X already connected, closing old connection." That
+    # used to be hidden by 3 mosquitto pods (each bridge usually
+    # landed on a different broker), but with mosquitto scaled
+    # to 1 they collide constantly and downlinks land on a bridge
+    # that gets disconnected before forwarding them to BasicStation.
+    # Manifested 2026-05-17 as JoinAccept publishing succeeding on
+    # mosquitto but never reaching the gateway.
+    # Long-term fix: convert this Deployment to a StatefulSet so
+    # each pod gets a stable ordinal hostname, and template the
+    # MQTT client_id off $HOSTNAME via the render-config init
+    # container. Then we can scale freely again.
+    replicaCount: 1
+    image:
+      pullPolicy: IfNotPresent
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    config:
+      mqtt:
+        server: "tcp://chirpstack-mosquitto:1883"

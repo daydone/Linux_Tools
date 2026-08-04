@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+helmCharts:
+  - name: grafana-alloy
+    releaseName: otel-collector-pdx1
+    version: 1.0.7
+    repo: https://charts.bitnami.com/bitnami
+    valuesFile: environments/pdx1-monitoring-values.yaml
+
+patchesJSON6902:
+  # Grafana Alloy DaemonSet
+  - target:
+      group: apps
+      version: v1
+      kind: DaemonSet
+      name: otel-collector-pdx1-grafana-alloy
+      namespace: monitoring
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: pdx-harbor.telnoc.com/noctel/grafana-alloy:1.10.2-debian-12-r0

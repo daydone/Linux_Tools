@@ -1,0 +1,118 @@
+traefik:
+  # 2026-06-25: bumped 1 → 3. Single ingress pod created random 5s
+  # request hangs under multi-operator desk load — when the one pod
+  # paused (GC / log flush / slow upstream), all in-flight requests
+  # behind it stalled. Three replicas gives the HAProxy upstream a
+  # real pool to round-robin and removes the single-pod head-of-line
+  # block in front of the cluster.
+  replicas: 3
+  image:
+    name: traefik
+    tag: v3.5.0
+  args:
+    - --api.dashboard=false
+    - --accesslog=true
+    - --entrypoints.web.address=:80
+    - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    - --entrypoints.websecure.address=:443
+    - --entrypoints.websecure.forwardedHeaders.trustedIPs=10.0.99.0/24
+    - --entrypoints.metrics.address=:9101
+    - --entrypoints.health.address=:9100
+    - --entrypoints.amqp.address=:5672/tcp
+    - --entrypoints.smtp-relay.address=:9025/tcp
+    - --entrypoints.smtp-submit.address=:9587/tcp
+    - --providers.kubernetescrd
+    - --providers.kubernetesingress
+    - --log.level=INFO
+    - --metrics.prometheus=true
+    - --metrics.prometheus.entryPoint=metrics
+    - --providers.kubernetescrd.allowEmptyServices=true
+    - --providers.kubernetesingress.allowEmptyServices=true
+    - --providers.kubernetesingress.ingressendpoint.publishedservice=prod/traefik-prod
+    - --providers.kubernetescrd.namespaces=prod
+    - --providers.kubernetesingress.namespaces=prod
+    - --entryPoints.websecure.http.tls=true
+    - --entryPoints.websecure.http.tls.certResolver=dnsmadeeasy
+    - --entryPoints.web.transport.respondingTimeouts.readTimeout=3600s
+    - --entryPoints.web.transport.respondingTimeouts.writeTimeout=3600s
+    - --entryPoints.web.transport.respondingTimeouts.idleTimeout=3600s
+    - --entryPoints.websecure.transport.respondingTimeouts.readTimeout=3600s
+    - --entryPoints.websecure.transport.respondingTimeouts.writeTimeout=3600s
+    - --entryPoints.websecure.transport.respondingTimeouts.idleTimeout=3600s
+    # Backend HTTP transport idle for UPGRADED connections (WebSocket).
+    # Traefik's entryPoint timeouts above govern the client-facing leg,
+    # but the backend leg uses serversTransport.forwardingTimeouts.
+    # idleConnTimeout defaults to 90s — WS frames flow inside the
+    # upgraded TCP but traefik's HTTP transport idle counter doesn't
+    # always reset on Connection:Upgrade, so the backend leg gets
+    # killed at ~90s of perceived idle (root cause of the realtime
+    # missed-pong terminate at ~75-95s seen in prod). 86400s (24h)
+    # matches HAProxy's external `timeout tunnel`; realtime's own
+    # missed-pong check is the WS-aware liveness gate.
+    - --serversTransport.forwardingTimeouts.idleConnTimeout=86400s
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.provider=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.email=noc@telnoc.com
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.resolvers=8.8.8.8
+    - --certificatesresolvers.dnsmadeeasy.acme.storage=/ssl-certs/acme-dnsmadeeasy.json
+    - --certificatesresolvers.dnsmadeeasy.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: longhorn
+    accessModes:
+      - ReadWriteMany
+    migrate: false
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.0.99.151
+    allocateLoadBalancerNodePorts: true
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    l2Pool: prod-vlan
+    annotations:
+      metallb.universe.tf/address-pool: prod-vlan-pool
+    ports:
+      web: 80
+      websecure: 443
+      metrics: 9100
+      amqp: 5672
+      smtp-relay: 9025
+      smtp-submit: 9587
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+  env:
+    - name: DNSMADEEASY_API_EMAIL
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: email
+    - name: DNSMADEEASY_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-key
+    - name: DNSMADEEASY_API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-secret
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - traefik-prod
+          topologyKey: kubernetes.io/hostname

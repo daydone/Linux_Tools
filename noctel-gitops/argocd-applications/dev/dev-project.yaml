@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: noctel-dev
+  namespace: argocd
+spec:
+  description: NocTel Development Environment
+  
+  # Source repositories
+  sourceRepos:
+  - 'git@bitbucket.org:noctel-bitbucket/noctel-gitops.git'
+  
+  # Allowed destinations
+  destinations:
+  - namespace: dev
+    server: https://kubernetes.default.svc
+  
+  # Allowed cluster resources
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  - group: networking.k8s.io
+    kind: IngressClass
+  # SeaweedFS chart ships a CiliumEgressGatewayPolicy. CEGP is
+  # cluster-scoped per `kubectl api-resources --api-group=cilium.io`,
+  # so it lives in the cluster whitelist even though the resource
+  # carries a namespace field. Same fix as noctel-qa applied
+  # 2026-05-03.
+  - group: cilium.io
+    kind: CiliumEgressGatewayPolicy
+  
+  # Namespace-scoped resources (allow all)
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  # Roles for this project
+  roles:
+  - name: dev-admin
+    description: Full access to dev environment
+    policies:
+    - p, proj:noctel-dev:dev-admin, applications, *, noctel-dev/*, allow
+    - p, proj:noctel-dev:dev-admin, repositories, *, *, allow
+    
+  # Sync windows (optional - can restrict when syncs are allowed)
+  # syncWindows: []

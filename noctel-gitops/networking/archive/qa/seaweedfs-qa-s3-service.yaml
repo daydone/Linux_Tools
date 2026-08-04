@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    meta.helm.sh/release-name: seaweedfs-qa
+    meta.helm.sh/release-namespace: qa
+  labels:
+    app.kubernetes.io/component: s3
+    app.kubernetes.io/instance: seaweedfs-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: seaweedfs
+    app.kubernetes.io/version: "3.57"
+    helm.sh/chart: seaweedfs-0.1.0
+  name: seaweedfs-qa-s3-service
+  namespace: qa
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: http
+    port: 8333
+    protocol: TCP
+    targetPort: 8333
+  selector:
+    app: seaweedfs-s3
+  sessionAffinity: None
+  type: ClusterIP

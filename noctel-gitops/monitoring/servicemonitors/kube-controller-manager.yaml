@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-controller-manager
+  namespace: monitoring
+  labels:
+    component: kube-controller-manager
+spec:
+  selector:
+    matchLabels:
+      k3s-app: kube-controller-manager
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  endpoints:
+  - port: https-metrics
+    scheme: https
+    interval: 30s
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    honorLabels: true

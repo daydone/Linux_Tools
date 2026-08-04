@@ -1,0 +1,398 @@
+# PDX1 Monitoring Stack Configuration
+global:
+  cluster: pdx1
+  namespace: monitoring
+
+kube-prometheus-stack:
+  # Prometheus Configuration
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 30d
+      retentionSize: "50GB"
+      externalLabels:
+        cluster: pdx1
+        environment: production
+      resources:
+        requests:
+          cpu: 1000m
+          memory: 4Gi
+        limits:
+          cpu: 4000m
+          memory: 8Gi
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 50Gi
+      # Service Monitor selector to monitor all namespaces
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelector: {}
+      ruleSelectorNilUsesHelmValues: false
+      ruleSelector: {}
+      # Extend startup probe timeout for WAL replay on restart
+      containers:
+        - name: prometheus
+          startupProbe:
+            initialDelaySeconds: 0
+            periodSeconds: 15
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 60
+      # Remote write to pdx-metrics for centralized metrics aggregation
+      remoteWrite:
+        - url: http://10.0.95.52:9090/api/v1/write
+          writeRelabelConfigs:
+            - sourceLabels: [__name__]
+              regex: 'node_.*|kube_.*|container_.*|kubelet_.*|apiserver_.*|etcd_.*|coredns_.*'
+              action: keep
+          queueConfig:
+            capacity: 10000
+            maxShards: 200
+            minShards: 1
+            maxSamplesPerSend: 5000
+            batchSendDeadline: 5s
+            minBackoff: 30ms
+            maxBackoff: 100ms
+
+    # Ingress for Prometheus
+    ingress:
+      enabled: true
+      ingressClassName: traefik-management
+      hosts:
+        - pdx1-prometheus.telnoc.com
+      tls:
+        - hosts:
+            - pdx1-prometheus.telnoc.com
+
+  # Grafana Configuration
+  grafana:
+    enabled: true
+    replicas: 2
+    adminPassword: "NocTel_Grafana_2025!"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    persistence:
+      enabled: true
+      storageClassName: local-path
+      size: 10Gi
+      type: pvc
+
+    # Provisioning configuration
+    provisioning:
+      enabled: true
+      dashboards:
+        enabled: true
+      alerting:
+        enabled: true
+      datasources:
+        enabled: false
+
+    # Ingress for Grafana
+    ingress:
+      enabled: true
+      ingressClassName: traefik-management
+      hosts:
+        - pdx1-grafana.telnoc.com
+      tls:
+        - hosts:
+            - pdx1-grafana.telnoc.com
+
+    # Default Dashboards
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+
+    dashboards:
+      default:
+        kubernetes-global:
+          gnetId: 15760
+          revision: 1
+          datasource: Prometheus
+        kubernetes-namespaces:
+          gnetId: 15758
+          revision: 1
+          datasource: Prometheus
+        node-exporter:
+          gnetId: 1860
+          revision: 31
+          datasource: Prometheus
+        traefik:
+          gnetId: 17346
+          revision: 1
+          datasource: Prometheus
+        redis-keydb:
+          gnetId: 763
+          revision: 1
+          datasource: Prometheus
+        pod-monitoring:
+          gnetId: 6417
+          revision: 1
+          datasource: Prometheus
+        rabbitmq:
+          gnetId: 10991
+          revision: 1
+          datasource: Prometheus
+        mysql-galera:
+          gnetId: 7362
+          revision: 5
+          datasource: Prometheus
+        loki-logs:
+          gnetId: 13639
+          revision: 2
+          datasource: Loki
+        kubernetes-restarts:
+          gnetId: 15549
+          revision: 1
+          datasource: Prometheus
+
+    # Data Layer Dashboards (from ConfigMaps)
+    extraVolumes:
+      - name: keydb-dashboard
+        configMap:
+          name: keydb-dashboard
+      - name: rabbitmq-dashboard
+        configMap:
+          name: rabbitmq-dashboard
+      - name: elasticsearch-dashboard
+        configMap:
+          name: elasticsearch-dashboard
+      - name: etcd-dashboard
+        configMap:
+          name: etcd-dashboard
+      - name: prometheus-overview-dashboard
+        configMap:
+          name: prometheus-overview-dashboard
+      - name: data-layer-overview-dashboard
+        configMap:
+          name: data-layer-overview-dashboard
+      - name: grafana-custom-datasources
+        configMap:
+          name: grafana-custom-datasources
+
+    extraVolumeMounts:
+      - name: keydb-dashboard
+        mountPath: /var/lib/grafana/dashboards/data-layer/keydb-cluster.json
+        subPath: keydb-cluster.json
+      - name: rabbitmq-dashboard
+        mountPath: /var/lib/grafana/dashboards/data-layer/rabbitmq-cluster.json
+        subPath: rabbitmq-cluster.json
+      - name: elasticsearch-dashboard
+        mountPath: /var/lib/grafana/dashboards/data-layer/elasticsearch-cluster.json
+        subPath: elasticsearch-cluster.json
+      - name: etcd-dashboard
+        mountPath: /var/lib/grafana/dashboards/infrastructure/etcd-cluster.json
+        subPath: etcd-cluster.json
+      - name: prometheus-overview-dashboard
+        mountPath: /var/lib/grafana/dashboards/infrastructure/prometheus-overview.json
+        subPath: prometheus-overview.json
+      - name: data-layer-overview-dashboard
+        mountPath: /var/lib/grafana/dashboards/data-layer/data-layer-overview.json
+        subPath: data-layer-overview.json
+      - name: grafana-custom-datasources
+        mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+        subPath: datasources.yaml
+
+  # Alertmanager Configuration
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      replicas: 3
+      retention: 120h
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: local-path
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 10Gi
+    # Ingress for Alertmanager
+    ingress:
+      enabled: true
+      ingressClassName: traefik-management
+      hosts:
+        - pdx1-alertmanager.telnoc.com
+      tls:
+        - hosts:
+            - pdx1-alertmanager.telnoc.com
+
+    # Alertmanager Config
+    config:
+      global:
+        resolve_timeout: 5m
+        slack_api_url: 'https://hooks.slack.com/services/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'
+      route:
+        group_by: ['alertname', 'cluster', 'namespace']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        receiver: 'slack-warnings'
+        routes:
+          - match:
+              alertname: Watchdog
+            receiver: 'null'
+          # Mirror every namespaced alert onto that env's NocTel events bus
+          # (in addition to Slack). continue:true lets the alert fall through
+          # to the severity routes below so Slack delivery is unchanged. The
+          # bus receiver POSTs to that env's noctel-api-monitor, which
+          # republishes it as monitor.alert.firing/.resolved on noctel.events.
+          - match:
+              namespace: dev
+            receiver: 'bus-dev'
+            continue: true
+          - match:
+              namespace: qa
+            receiver: 'bus-qa'
+            continue: true
+          - match:
+              namespace: prod
+            receiver: 'bus-prod'
+            continue: true
+          - match_re:
+              alertname: ^(KubeNodeNotReady|KubeNodeUnreachable)$
+            receiver: 'slack-critical'
+          - match:
+              severity: critical
+            receiver: 'slack-critical'
+          - match:
+              severity: warning
+            receiver: 'slack-warnings'
+      inhibit_rules:
+        - source_match:
+            severity: critical
+          target_match:
+            severity: warning
+          equal: ['alertname', 'namespace', 'pod']
+      receivers:
+        - name: 'null'
+        # NocTel events-bus bridges — one per env, POSTing to that env's
+        # noctel-api-monitor webhook (port 7260), which republishes onto
+        # noctel.events for the existing notify/desk/action consumers.
+        - name: 'bus-dev'
+          webhook_configs:
+            - url: 'http://noctel-api-monitor.dev:7260/monitor/alertmanager-webhook'
+              send_resolved: true
+        - name: 'bus-qa'
+          webhook_configs:
+            - url: 'http://noctel-api-monitor.qa:7260/monitor/alertmanager-webhook'
+              send_resolved: true
+        - name: 'bus-prod'
+          webhook_configs:
+            - url: 'http://noctel-api-monitor.prod:7260/monitor/alertmanager-webhook'
+              send_resolved: true
+        - name: 'slack-critical'
+          slack_configs:
+            - channel: '#pdx2-cluster-alerts'
+              send_resolved: true
+              title: ':red_circle: [CRITICAL] {{ .CommonLabels.alertname }}'
+              text: |
+                *Status:* {{ .Status | toUpper }}
+                *Cluster:* {{ .CommonLabels.cluster }}
+                *Namespace:* {{ .CommonLabels.namespace }}
+                *Job:* {{ .CommonLabels.job }}
+                {{ range .Alerts }}*Summary:* {{ .Annotations.summary }}
+                *Description:* {{ .Annotations.description }}
+                {{ end }}
+        - name: 'slack-warnings'
+          slack_configs:
+            - channel: '#pdx2-cluster-alerts'
+              send_resolved: true
+              title: ':warning: [WARNING] {{ .CommonLabels.alertname }}'
+              text: |
+                *Status:* {{ .Status | toUpper }}
+                *Cluster:* {{ .CommonLabels.cluster }}
+                *Namespace:* {{ .CommonLabels.namespace }}
+                *Job:* {{ .CommonLabels.job }}
+                {{ range .Alerts }}*Alert:* {{ .Labels.alertname }} ({{ .Labels.pod }})
+                {{ end }}
+
+  # Node Exporter
+  nodeExporter:
+    enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # Kube State Metrics
+  kubeStateMetrics:
+    enabled: true
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  # Prometheus Operator
+  prometheusOperator:
+    enabled: true
+    admissionWebhooks:
+      enabled: false
+      patch:
+        enabled: false
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # Default Rules Configuration
+  # Disable K3s-specific false positive alerts
+  defaultRules:
+    rules:
+      kubeSchedulerAlerting: false
+      kubeControllerManager: false
+      kubeProxy: false
+      etcd: false
+    disabled:
+      KubePodNotReady: true
+      KubeDeploymentReplicasMismatch: true
+      KubeStatefulSetReplicasMismatch: true
+      KubeDeploymentRolloutStuck: true
+      KubeStatefulSetUpdateNotRolledOut: true
+      KubeContainerWaiting: true
+      KubeJobNotCompleted: true
+      KubeJobFailed: true
+      KubePodCrashLooping: true
+      CPUThrottlingHigh: true
+      KubeAggregatedAPIErrors: true
+      KubeAggregatedAPIDown: true
+      KubeDaemonSetRolloutStuck: true
+      AlertmanagerFailedToSendAlerts: true
+      KubeContainerImagePullBackOff: true
+      ImagePullBackOff: true
+      TargetDown: true

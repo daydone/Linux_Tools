@@ -1,0 +1,32 @@
+# Allow every prod pod egress to the K8S API server.
+#
+# Why this is a CiliumNetworkPolicy and not just an extra rule on
+# `allow-prod-vlan-egress`: Cilium classifies the K8S API server as
+# a special entity (`kube-apiserver`), and standard Kubernetes
+# NetworkPolicy `ipBlock` rules don't match that entity. Even with
+# `10.0.95.0/24` (where the actual API endpoints live) in an
+# ipBlock, traffic is classified by Cilium as
+# `identity=kube-apiserver` and falls through to deny because no
+# rule names that entity. `toEntities: [kube-apiserver]` is the
+# only NetworkPolicy idiom that matches it.
+#
+# Symptom that prompted this: traefik-prod silently 404'd every
+# request because its watch on IngressRoutes / Services / Secrets
+# couldn't reach 10.43.0.1:443. Same root cause would hit any
+# controller that hammers the K8S API on startup
+# (cert-manager, external-dns, kube-state-metrics, etc.).
+#
+# Pattern: any namespace that has a deny-default-by-Egress
+# NetworkPolicy MUST also have this CiliumNetworkPolicy.
+#
+# Diagnosed 2026-05-08 (see "K3S engineer notes" runbook).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-kube-apiserver-egress
+  namespace: prod
+spec:
+  endpointSelector: {}
+  egress:
+    - toEntities:
+        - kube-apiserver

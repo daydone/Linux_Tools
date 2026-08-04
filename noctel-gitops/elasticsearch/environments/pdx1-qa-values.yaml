@@ -1,0 +1,61 @@
+global:
+  namespace: qa
+
+elasticsearch:
+    # Version configuration
+    version: "8.15.5"
+    # Enable xpack.security so ECK's file-settings (which carries
+    # role_mappings) can be parsed; plain HTTP + Basic auth keeps us
+    # from needing to mount the ECK CA cert in every consumer pod.
+    # See pdx1-dev-config.yaml for the full rationale.
+    security:
+      enabled: true
+    http:
+      tls:
+        disabled: true
+    # ECK requires memory request == limit so the JVM heap (derived from
+    # the container limit via -Xms/-Xmx) is sized predictably.
+    # ResourcesAwareManagement condition flipped False with mismatched
+    # values: "memory request and limit do not have the same value".
+    resources:
+      requests:
+        cpu: 500m
+        memory: 4Gi
+      limits:
+        cpu: "2"
+        memory: 4Gi
+    # 3-node cluster — quorum 2, can tolerate one node failure. Going
+    # 1->3 directly (skipping 2) avoids the split-brain risk of a 2-node
+    # ES (any failure halts writes because quorum needs both up). Requires
+    # a 3rd k3s worker; without it the 'required' antiAffinity in the
+    # chart leaves the third pod Pending until pdx1-kworker2 joins. PDB
+    # auto-applies at replicaCount > 1 (see chart pdb.yaml).
+    replicaCount: 3
+    volumeClaimTemplate:
+      resources:
+        requests:
+          storage: 10Gi
+    # Node configuration
+    # NOTE: this nodeSets block is currently UNUSED — the chart template
+    # builds its own nodeSets array using top-level replicaCount/resources.
+    # Left in place because removing it is a separate cleanup; keeping
+    # the structural diff minimal here.
+    nodeSets:
+      - name: "default"
+        count: 1
+        # Resource configuration
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        # Storage configuration
+        storage:
+          size: "10Gi"
+          storageClass: "longhorn"
+        # Elasticsearch configuration
+        config:
+          node.store.allow_mmap: false
+          xpack.security.enabled: false

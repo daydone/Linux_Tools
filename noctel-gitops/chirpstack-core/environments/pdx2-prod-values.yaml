@@ -1,0 +1,2 @@
+  version: "v4.7.3"      # STABLE - Last deployed 2025-09-01
+  replicaCount: 3

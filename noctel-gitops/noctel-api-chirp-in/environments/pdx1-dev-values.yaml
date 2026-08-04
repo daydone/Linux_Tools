@@ -1,0 +1,14 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-api-chirp-in:
+  version: "latest"
+  replicaCount: 3
+  env:
+    # Cluster-bound region tag. chirp-in filters inbound uplinks to
+    # devices whose home_region matches this value. Per task #86.
+    CHIRPSTACK_REGION: pdx1

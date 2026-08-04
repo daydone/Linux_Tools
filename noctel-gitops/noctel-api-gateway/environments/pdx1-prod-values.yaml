@@ -1,0 +1,61 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+ingressRoute:
+  enabled: true
+  # pdx1-prod-api.telnoc.com: internal cluster hostname
+  # api1.noctel.com: external public domain (fronted by SRX/LB) - commented out to avoid ACME cert provisioning
+  hosts:
+    - pdx1-prod-api.telnoc.com
+    # - api1.noctel.com
+
+traefik:
+  tlsForwarding:
+    enabled: false
+
+tls:
+  enabled: true
+  host: pdx1-prod-api.telnoc.com
+
+noctel-api-gateway:
+  version: "latest"
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 400m
+      memory: 256Mi
+    limits:
+      cpu: 800m
+      memory: 512Mi
+  ingress:
+    enabled: true
+    ingressClassName: traefik-prod
+    host: pdx1-prod-api.telnoc.com
+    metricsHost: pdx1-prod-api-metrics.telnoc.com
+  env:
+    HTTP_PORT: "7100"
+    HEALTH_PORT: "9100"
+    JWT_ALGORITHM: "HS256"
+    # Explicit allowlist replaces the wildcard default. credentials:true
+    # in the gateway's CORS plugin means '*' is rejected by browsers
+    # whenever a request carries cookies or auth headers, so we name
+    # every origin the desk runs on. Add prod hostnames here when the
+    # public LB fronts them too.
+    CORS_ORIGIN: "https://desk.noctel.com,https://pdx1-prod-desk.telnoc.com"
+    # Explicit in-cluster URL for the desk-version watcher's poll. The
+    # shared FRONTEND_URL points at the public host (https://desk.noctel.com)
+    # which the pod cannot hairpin back into from inside the cluster, so
+    # the watcher's fetch silently failed and X-NocTel-Desk-Version never
+    # rode responses, so the desk's "new version" banner stayed inert
+    # across deploys in prod. DESK_VERSION_URL wins over FRONTEND_URL in
+    # the resolver so nothing else that reads FRONTEND_URL is affected.
+    DESK_VERSION_URL: "http://noctel-desk.prod.svc.cluster.local/version.json"
+    #    DB_HOST: prod-ddb.noctel.com
+    #    DB_PORT: "3306"
+    #    DB_NAME: ntc_prod
+    #    DB_USER: noctel_prod
+    #    DB_PASSWORD: "XQFVF0IxK0UCA5rq0St88n8F"

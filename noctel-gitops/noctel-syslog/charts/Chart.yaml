@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-syslog
+description: noctel-syslog - Multi-protocol syslog collector with pattern hooks
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

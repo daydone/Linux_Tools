@@ -1,0 +1,84 @@
+noctel-display:
+    version: "v1.0.35"
+    replicaCount: 0
+    image:
+      pullPolicy: Always
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      runAsNonRoot: true
+      fsGroup: 1001
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - noctel
+            topologyKey: kubernetes.io/hostname
+    probes:
+      readiness:
+        httpGet:
+          path: /ping
+          port: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+      liveness:
+        httpGet:
+          path: /ping
+          port: http
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 10
+    volumes:
+      - name: logs
+        emptyDir: {}
+    volumeMounts:
+      - name: logs
+        mountPath: /app/logs
+    env:
+      NODE_ENV: development
+      PORT: "3001"
+      LOG_LEVEL: info
+      LOG_DIR: "./logs"
+      # API and service URLs
+      NOCTEL_API_URL: http://noctel-api-service.qa.svc.cluster.local:3000
+      WS_URL: wss://pdx2-qa-api.mocktel.com/ws
+      PUB_DISPLAY_URL: https://pdx2-qa-display.mocktel.com
+      # Redis configuration
+      REDIS_URL: redis://redis-qa-master.qa.svc.cluster.local:6379
+      # Security
+      SESSION_SECRET: "qa-session-secret"
+      JWT_ACCESS_SECRET: "qa-jwt-access-S3cr3t"
+      # Third-party API keys
+      ASSEMBLYAI_API_KEY: "316c0696440340289850e09ce7af364b"
+      MAPBOX_API_KEY: "pk.eyJ1IjoiYW1tZXRlciIsImEiOiJjbWUyeXZvZnkwMW9zMmtvZ2tkdm5jcjQyIn0.QTzQNRmIW_Oh6BM4gOqWxw"
+      OPENWEATHER_API_KEY: "002a7f2040ebc24782c6fdab296b9e33"
+      # Debug settings
+      DEBUG: "true"
+      DEBUG_API: "1"
+      DEBUG_ENABLED: "true"
+      DEBUG_ERRORS: "true"
+      DEBUG_HTTP_RESPONSES: "true"
+      DEBUG_WS_CONNECTION: "true"
+      DEBUG_WS_ERRORS: "true"
+      # Features
+      SCREEN_SHARE_ENABLED: "true"
+      # Database (from existing QA config)
+      DB_PASSWORD: "XQFVF0IxK0UCA5rq0St88n8F"
+      # RabbitMQ (from existing QA config)
+      RABBITMQ_PASSWORD: "qa-rabbitmq-password"

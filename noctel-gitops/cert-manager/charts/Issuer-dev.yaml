@@ -1,0 +1,15 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: letsencrypt-http01
+  namespace: dev
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: noc@telnoc.com
+    privateKeySecretRef:
+      name: letsencrypt-key
+    solvers:
+    - http01:
+        ingress:
+          class: nginx

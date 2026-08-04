@@ -1,0 +1,103 @@
+{{- if index .Values "seaweedfs" "deployMaster" }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Chart.Name }}-master
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}-master
+    component: master
+spec:
+  replicas: {{ index .Values "seaweedfs" "replicaCount" }}
+  serviceName: {{ .Chart.Name }}-master
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}-master
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}-master
+        component: master
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      {{- with index .Values "seaweedfs" "securityContext" }}
+      securityContext:
+        fsGroup: {{ .fsGroup }}
+        runAsGroup: {{ .runAsGroup }}
+        runAsNonRoot: {{ .runAsNonRoot }}
+        runAsUser: {{ .runAsUser }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Chart.Name }}-master
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: {{ .Chart.Name }}-master
+        image: "{{ index .Values "seaweedfs" "image" "repository" }}:{{ index .Values "seaweedfs" "version" }}"
+        imagePullPolicy: {{ index .Values "seaweedfs" "image" "pullPolicy" }}
+        command:
+        - /usr/bin/weed
+        args:
+        - master
+        - -ip=$(POD_NAME).{{ .Chart.Name }}-master.{{ .Values.global.namespace }}.svc.cluster.local
+        - -port=9333
+        - -peers={{- $replicaCount := int (index .Values "seaweedfs" "master" "replicas" | default (index .Values "seaweedfs" "replicaCount")) }}{{- $namespace := .Values.global.namespace | default "default" }}{{- $chartName := .Chart.Name }}{{- range $i := until $replicaCount }}{{ if $i }},{{ end }}{{ $chartName }}-master-{{ $i }}.{{ $chartName }}-master.{{ $namespace }}.svc.cluster.local:9333{{ end }}
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        ports:
+        - containerPort: 9333
+          name: master
+        - containerPort: 19333
+          name: grpc
+        {{- with index .Values "seaweedfs" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "seaweedfs" "securityContext" }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: {{ .runAsUser }}
+        {{- end }}
+        livenessProbe:
+          tcpSocket:
+            port: 9333
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 9333
+          initialDelaySeconds: 20
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: master-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: master-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      storageClassName: {{ index .Values "seaweedfs" "persistence" "storageClass" }}
+      resources:
+        requests:
+          storage: {{ index .Values "seaweedfs" "persistence" "size" }}
+{{- end }}

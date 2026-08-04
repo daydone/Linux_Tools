@@ -1,0 +1,101 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+spec:
+  version: {{ index .Values "elasticsearch" "version" }}
+
+  {{- /*
+    HTTP TLS toggle. When `elasticsearch.http.tls.disabled: true` is set
+    in the env values, ECK skips generating the self-signed cert and
+    serves /:9200 over plain HTTP. Combined with security enabled (see
+    config block below), this gives Basic-auth-protected HTTP — fine
+    inside a single-cluster k3s where everything's intra-namespace.
+    Default is HTTPS (chart-level safe default).
+  */}}
+  {{- if dig "elasticsearch" "http" "tls" "disabled" false (.Values | toJson | fromJson | default dict) }}
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  {{- end }}
+
+  nodeSets:
+  - name: default
+    count: {{ index .Values "elasticsearch" "replicaCount" }}
+
+    podTemplate:
+      spec:
+        nodeSelector:
+          node-role.kubernetes.io/worker: "true"
+
+        affinity:
+          podAntiAffinity:
+            # Soft antiAffinity — scheduler will spread ES pods across
+            # workers when possible, but allows colocation when worker
+            # count < replica count. Trade-off: a single host failure
+            # CAN take >1/3 of quorum down on under-provisioned
+            # clusters; accepted in dev/qa where a 3rd worker isn't
+            # always available. Add a 3rd worker (or scale ES to 2) in
+            # prod if true host-level HA is required.
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    elasticsearch.k8s.elastic.co/cluster-name: {{ .Chart.Name }}
+                topologyKey: kubernetes.io/hostname
+
+        containers:
+        - name: {{ .Chart.Name }}
+          {{- with index .Values "elasticsearch" "resources" }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          readinessProbe:
+            exec:
+              command:
+              - bash
+              - -c
+              - curl -s -u elastic-internal-probe:$(cat /mnt/elastic-internal/pod-mounted-users/elastic-internal-probe) http://127.0.0.1:9200/_cluster/health | grep -q '"status":"yellow"\|"status":"green"'
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+    config:
+      node.store.allow_mmap: false
+      {{- /*
+        xpack.security toggle.
+
+        Default: explicitly disabled (matches the chart's historical
+        behavior — every existing env was running with security off).
+
+        Per-env override `elasticsearch.security.enabled: true` REMOVES
+        the explicit-disable line, which lets ECK fall through to its
+        own default (security enabled). ECK then auto-generates the
+        `elastic` superuser password into the
+        `<cluster>-es-elastic-user` Secret, and the readiness sidecar
+        + operator's reconciler both use the internal users it manages.
+
+        We can't write `xpack.security.enabled: true` ourselves —
+        ECK 2.14+ rejects user-set values for that key as "reserved
+        for internal use." The right way to enable it is to NOT set
+        it explicitly.
+      */}}
+      {{- if not (dig "elasticsearch" "security" "enabled" false (.Values | toJson | fromJson | default dict)) }}
+      xpack.security.enabled: false
+      {{- end }}
+
+    volumeClaimTemplates:
+    - metadata:
+        name: {{ .Chart.Name }}-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        storageClassName: {{ index .Values "elasticsearch" "volumeClaimTemplate" "storageClassName" }}
+        {{- with index .Values "elasticsearch" "volumeClaimTemplate" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}

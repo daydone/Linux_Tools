@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-filer-config
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  filer.toml: |
+    # Metadata proxied through external master (10.0.91.24)
+    # No local LevelDB - filer is stateless

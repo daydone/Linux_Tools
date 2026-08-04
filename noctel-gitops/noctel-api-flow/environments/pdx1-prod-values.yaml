@@ -1,0 +1,18 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-flow:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    PORT: "7240"
+    HEALTH_PORT: "9240"
+    SERVICE_NAME: flow
+    CACHE_FILL_ENABLED: "true"
+  secrets:

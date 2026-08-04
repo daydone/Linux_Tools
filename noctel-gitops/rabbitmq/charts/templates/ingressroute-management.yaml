@@ -1,0 +1,27 @@
+{{- if dig "management" "ingressRoute" "enabled" false .Values.rabbitmq }}
+# Management UI IngressRoute — exposes port 15672 via Traefik at the
+# configured host with a dnsmadeeasy-issued TLS cert. Gated per-env:
+# dev turns this on in its values file; qa and prod leave it off so
+# the management UI stays cluster-internal.
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: ha-rabbit-management
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: ha-rabbit
+    component: management
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ .Values.rabbitmq.management.ingressRoute.host }}`)
+      kind: Rule
+      services:
+        - name: ha-rabbit
+          port: 15672
+  tls:
+    certResolver: dnsmadeeasy
+    domains:
+      - main: {{ .Values.rabbitmq.management.ingressRoute.host }}
+{{- end }}

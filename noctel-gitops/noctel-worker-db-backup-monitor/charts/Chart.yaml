@@ -1,0 +1,6 @@
+apiVersion: v2
+name: noctel-worker-db-backup-monitor
+description: K8s-side monitor for the bare-metal PXC backup agent. Polls the off-cluster object store; alerts via noctel-notify webhook when backups go stale. Pairs with noctel-db-backup running on the Galera backup node.
+type: application
+version: 0.1.0
+appVersion: "latest"

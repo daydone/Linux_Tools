@@ -1,0 +1,11 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-workflow:
+  version: "latest"
+  replicaCount: 1
+  env:

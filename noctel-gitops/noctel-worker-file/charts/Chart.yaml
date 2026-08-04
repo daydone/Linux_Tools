@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-worker-file
+description: noctel-worker-file - File storage background worker (image is published as noctel-api-file-worker)
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

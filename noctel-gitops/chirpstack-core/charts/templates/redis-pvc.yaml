@@ -1,0 +1,17 @@
+{{- if and (index .Values "chirpstack-core" "redis" "sidecar" "enabled") (index .Values "chirpstack-core" "redis" "sidecar" "persistence" "enabled") }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Chart.Name }}-redis
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    component: redis
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: {{ index .Values "chirpstack-core" "redis" "sidecar" "persistence" "size" | default "5Gi" }}
+{{- end }}

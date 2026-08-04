@@ -1,0 +1,119 @@
+{{- $config := dict }}
+{{- if index .Values "chirpstack-gateway-bridge" "config" }}
+{{- $config = index .Values "chirpstack-gateway-bridge" "config" }}
+{{- end }}
+{{- $backend := dict }}
+{{- if $config.backend }}
+{{- $backend = $config.backend }}
+{{- end }}
+{{- $basicStation := dict }}
+{{- if $backend.basicStation }}
+{{- $basicStation = $backend.basicStation }}
+{{- end }}
+{{- $semtechUdp := dict }}
+{{- if $backend.semtechUdp }}
+{{- $semtechUdp = $backend.semtechUdp }}
+{{- end }}
+{{- $region := dict }}
+{{- if $config.region }}
+{{- $region = $config.region }}
+{{- end }}
+{{- $loraStd := dict }}
+{{- if $region.loraStd }}
+{{- $loraStd = $region.loraStd }}
+{{- end }}
+{{- $mqtt := dict }}
+{{- if $config.mqtt }}
+{{- $mqtt = $config.mqtt }}
+{{- end }}
+{{- $integration := dict }}
+{{- if $config.integration }}
+{{- $integration = $config.integration }}
+{{- end }}
+{{- $lnsTls := dict }}
+{{- if index .Values "chirpstack-gateway-bridge" "lnsTls" }}
+{{- $lnsTls = index .Values "chirpstack-gateway-bridge" "lnsTls" }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-config
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  chirpstack-gateway-bridge.toml: |
+    [general]
+    log_level={{ $config.logLevel | default 7 }}
+
+    [backend]
+    type="{{ $backend.type | default "basic_station" }}"
+
+    [backend.semtech_udp]
+    bind="{{ $semtechUdp.bind | default "0.0.0.0:1700" }}"
+
+    [backend.basic_station]
+    bind="{{ $basicStation.bind | default "0.0.0.0:3001" }}"
+    allow_unknown_gateways={{ $basicStation.allowUnknownGateways | default true }}
+    ping_interval="{{ $basicStation.pingInterval | default "30s" }}"
+    read_timeout="{{ $basicStation.readTimeout | default "60s" }}"
+    write_timeout="{{ $basicStation.writeTimeout | default "60s" }}"
+    {{- if $lnsTls.enabled }}
+    tls_cert="/etc/ssl/certs/lns/tls.crt"
+    tls_key="/etc/ssl/certs/lns/tls.key"
+    {{- end }}
+
+    # Region Configuration
+    region="{{ $region.name | default "US915" }}"
+    frequency_min={{ $region.frequencyMin | default 902000000 }}
+    frequency_max={{ $region.frequencyMax | default 938000000 }}
+
+    [[backend.basic_station.concentrators]]
+      [backend.basic_station.concentrators.multi_sf]
+      frequencies=[
+        {{- if $region.multiSfFrequencies }}
+        {{- range $region.multiSfFrequencies }}
+        {{ . }},
+        {{- end }}
+        {{- else }}
+        903900000,
+        904100000,
+        904300000,
+        904500000,
+        904700000,
+        904900000,
+        905100000,
+        905300000,
+        {{- end }}
+      ]
+
+      [backend.basic_station.concentrators.lora_std]
+      frequency={{ $loraStd.frequency | default 904600000 }}
+      bandwidth={{ $loraStd.bandwidth | default 500000 }}
+      spreading_factor={{ $loraStd.spreadingFactor | default 8 }}
+
+    [integration.mqtt.auth.generic]
+    servers=["{{ $mqtt.server | default (printf "tcp://chirpstack-mosquitto-%s:1883" .Values.global.namespace) }}"]
+    username="{{ $mqtt.username | default "" }}"
+    password="{{ $mqtt.password | default "" }}"
+    qos={{ $mqtt.qos | default 0 }}
+    clean_session={{ $mqtt.cleanSession | default true }}
+    client_id="{{ $mqtt.clientId | default (printf "gateway-bridge-noctel-%s" .Values.global.namespace) }}"
+
+    # Integration configuration
+    [integration]
+    marshaler="{{ $integration.marshaler | default "json" }}"
+
+    [integration.mqtt]
+    # Asymmetric on purpose. ChirpStack-core uses the prefix on
+    # subscribe (event_topic="us915_1/gateway/+/event/+") to route
+    # uplinks to the right region, but on PUBLISH it ignores the
+    # `command_topic_template` in its per-region config and hard-
+    # publishes to bare `gateway/{eui}/command/{cmd}` — the region
+    # is already implied by which gateway it's targeting. Our bridge
+    # therefore has to SUBSCRIBE to the unprefixed form, or downlinks
+    # silently never reach the gateway. Manifested 2026-05-17 as
+    # every OTAA JoinAccept dropping (uplink reaches core, JoinAccept
+    # published to gateway/<eui>/command/down, bridge subscribed to
+    # us915_1/gateway/+/command/+, never sees it).
+    event_topic_template="{{ $integration.eventTopicTemplate | default "us915_1/gateway/{{.GatewayID}}/event/{{.EventType}}" }}"
+    state_topic_template="{{ $integration.stateTopicTemplate | default "us915_1/gateway/{{.GatewayID}}/state/{{.StateType}}" }}"
+    command_topic_template="{{ $integration.commandTopicTemplate | default "gateway/{{.GatewayID}}/command/+" }}"

@@ -1,0 +1,42 @@
+global:
+  namespace: default
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-api-platform-sync:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-api-platform-sync
+    tag: latest
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+  env:
+    - name: PORT
+      value: "7273"
+    - name: HEALTH_PORT
+      value: "9273"
+    - name: PLATFORM_SYNC_EXCHANGE
+      value: "noctel.platform-sync"
+    - name: PLATFORM_SYNC_REGISTRY_PATH
+      value: "/noctel-standards/shared/platform-sync-registry"
+    # PLATFORM_SYNC_ENV is set per-environment values file (dev/qa/prod).
+
+  service:
+    enabled: true
+    port: 7273
+    targetPort: http
+
+  metrics:
+    enabled: false
+    port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s

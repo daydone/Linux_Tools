@@ -1,0 +1,31 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-worker-indexer:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: noctel-worker-indexer
+    REDIS_KEY_PREFIX: "noctel:"
+    # 2026-07-13 incident: bootstrap's drift auto-repair defaulted ON
+    # (NODE_ENV unset -> treated as non-production) and reindexInPlace
+    # of multi-million-doc history indices hung bootstrap on all
+    # replicas BEFORE consumers started -> 22h of no indexing. Repair
+    # stays alert-only in prod; drift is fixed by a deliberate
+    # operator-run reindex, never at boot.
+    INDEXER_AUTO_REPAIR: "0"
+    NODE_ENV: production
+    # History publisher migrated 2026-05-26 from `noctel.history` onto
+    # `noctel.events` (history.<entity>.<verb> routing keys). Consumer
+    # binding must match or history events accumulate in an exchange
+    # nothing reads. Queue is renamed `.v2` so AMQP doesn't reject the
+    # rebind on the previously-declared durable queue.
+    HISTORY_EXCHANGE: noctel.events
+    HISTORY_QUEUE: history.index.v2
+  secrets:

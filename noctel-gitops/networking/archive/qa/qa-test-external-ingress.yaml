@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls.certresolver: dnsmadeeasy
+  labels:
+    app.kubernetes.io/instance: noctel-qa
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: noctel-now
+    app.kubernetes.io/part-of: noctel-now
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: noctel-now-0.1.0
+  name: qa-test-external-ingress
+  namespace: qa
+spec:
+  ingressClassName: traefik-qa
+  rules:
+  - host: qa2.telnoc.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: noctel-qa-ui-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - qa2.telnoc.com
+    secretName: qa2-telnoc-com-tls

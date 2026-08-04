@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: noctel-worker-geolocation-prod
+  namespace: argocd
+  labels:
+    environment: prod
+    component: noctel-worker-geolocation
+spec:
+  project: noctel-prod
+  source:
+    repoURL: git@bitbucket.org:noctel-bitbucket/noctel-gitops.git
+    targetRevision: HEAD
+    path: noctel-worker-geolocation/charts
+    helm:
+      valueFiles:
+        - ../environments/pdx1-prod-values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: prod
+  syncPolicy:
+    # Prod is MANUAL SYNC only. Drift surfaces in ArgoCD; operator
+    # presses Sync when ready to promote. Dev / qa still ride
+    # automated sync so they pick up :latest as soon as a build
+    # publishes a new image.
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true

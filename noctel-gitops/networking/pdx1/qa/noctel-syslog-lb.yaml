@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: qa-vlan-pool
+  labels:
+    app: noctel-syslog
+  name: noctel-syslog-lb
+  namespace: qa
+spec:
+  allocateLoadBalancerNodePorts: true
+  # Local preserves the sender's source IP; syslog_source host_cidr
+  # identity depends on it. MetalLB L2 then announces only from nodes
+  # running a ready collector pod.
+  externalTrafficPolicy: Local
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.0.98.157
+  ports:
+  - name: syslog-udp
+    port: 514
+    protocol: UDP
+    targetPort: syslog-udp
+  - name: syslog-tcp
+    port: 514
+    protocol: TCP
+    targetPort: syslog-tcp
+  selector:
+    app: noctel-syslog
+  sessionAffinity: None
+  type: LoadBalancer

@@ -1,0 +1,178 @@
+{{- /*
+  ChirpStack-core AMQP watchdog.
+
+  ChirpStack 4.7's lapin AMQP client doesn't reliably recover when the
+  broker force-closes its connection — the channel state goes to
+  `Error` and stays there. The pod keeps logging:
+
+    ERROR chirpstack::integration::amqp: Publishing event error
+          error=invalid channel state: Error
+    INFO  chirpstack::integration::amqp: (Re)connecting to AMQP broker
+
+  but the channel never comes back. Every device uplink reaches
+  chirpstack-core, processes correctly, then errors out on the AMQP
+  publish — chirp-in's queue stays empty, nothing flows downstream,
+  /super/event-stream shows nothing.
+
+  Observed in prod 2026-05-18 after a forced `close_all_connections`
+  from a debug session; same pattern would trigger on any broker
+  restart, network partition, or upstream connection RST.
+
+  This CronJob:
+    1. Runs every 2 minutes.
+    2. Scans every chirpstack-core pod's last 2 min of logs.
+    3. If a pod has any `invalid channel state` AND zero successful
+       `Publishing event` lines (AMQP integration log, not MQTT) in
+       that window, marks it for restart.
+    4. If any pod is stuck, runs `kubectl rollout restart deployment/
+       chirpstack-core` (rolls all 3 pods cleanly).
+    5. Emits an opsAlert via shared notify webhook so operators see
+       the recovery.
+
+  Restart frequency cap: 5 minutes between restarts (KeyDB SETNX-ish
+  guard) so a persistent issue doesn't loop-restart forever.
+
+  Long-term: file an upstream issue with ChirpStack about lapin
+  recovery, OR move to a worker tier (noctel-worker-chirp-out style)
+  that owns the AMQP publish so chirpstack-core only handles MQTT.
+*/}}
+{{- $watchdog := dig "watchdog" (dict) (index .Values "chirpstack-core") }}
+{{- if $watchdog.enabled | default true }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Chart.Name }}-watchdog
+  namespace: {{ .Values.global.namespace | default "default" }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ .Chart.Name }}-watchdog
+  namespace: {{ .Values.global.namespace | default "default" }}
+rules:
+  # Read pod list + logs to detect the stuck-AMQP pattern.
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+  # Patch the deployment to trigger a rolling restart (annotation bump).
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Chart.Name }}-watchdog
+  namespace: {{ .Values.global.namespace | default "default" }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Chart.Name }}-watchdog
+    namespace: {{ .Values.global.namespace | default "default" }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ .Chart.Name }}-watchdog
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Chart.Name }}-watchdog
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app.kubernetes.io/component: chirpstack-core-watchdog
+    app.kubernetes.io/instance: noctel-{{ .Values.global.namespace }}
+    app.kubernetes.io/name: noctel
+spec:
+  # Every 2 minutes. Tight enough that an AMQP wedge only blocks
+  # uplinks for ~2 min worst-case; slack enough that a normal pod
+  # restart doesn't trigger more frequently than the rollout itself
+  # takes (~60-90s).
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 90
+      template:
+        spec:
+          serviceAccountName: {{ .Chart.Name }}-watchdog
+          restartPolicy: Never
+          containers:
+            - name: watchdog
+              # Match the image already in use by rabbitmq/charts/credentials-
+              # cronjob.yaml — known-good and pre-cached on the cluster
+              # nodes. `:1.28` was pinned for predictability but isn't
+              # actually pullable from this cluster's mirror config.
+              image: bitnami/kubectl:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  NS="{{ .Values.global.namespace | default "default" }}"
+
+                  # 5-minute restart-rate cap. Sentinel file in /tmp
+                  # is per-Job and goes away with the pod, so use a
+                  # ConfigMap annotation on the deployment instead
+                  # (kubernetes.io/restartedAt is what `kubectl rollout
+                  # restart` itself sets; we check it).
+                  LAST_RESTART=$(kubectl -n "$NS" get deploy chirpstack-core \
+                    -o jsonpath='{.spec.template.metadata.annotations.kubectl\.kubernetes\.io/restartedAt}' \
+                    2>/dev/null || echo "")
+                  if [ -n "$LAST_RESTART" ]; then
+                    LAST_TS=$(date -d "$LAST_RESTART" +%s 2>/dev/null || echo 0)
+                    NOW_TS=$(date +%s)
+                    AGE=$(( NOW_TS - LAST_TS ))
+                    if [ "$AGE" -lt 300 ]; then
+                      echo "skip: last restart was ${AGE}s ago (<300s cap)"
+                      exit 0
+                    fi
+                  fi
+
+                  STUCK_PODS=""
+                  for pod in $(kubectl -n "$NS" get pods -l app=chirpstack-core \
+                               -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}'); do
+                    LOG=$(kubectl -n "$NS" logs "$pod" --since=2m 2>/dev/null || true)
+                    ERR_COUNT=$(printf '%s\n' "$LOG" | grep -c "invalid channel state" || true)
+                    OK_COUNT=$(printf '%s\n' "$LOG" | grep -c "chirpstack::integration::amqp.* Publishing event " || true)
+                    # Stuck if errors >= 3 AND no successes in the same window.
+                    # The 3 floor avoids restarting on a single transient
+                    # error mid-recovery; the OK_COUNT==0 floor avoids
+                    # restarting a healthy pod that publishes 100 events
+                    # and happens to have 1-2 transient errors.
+                    if [ "$ERR_COUNT" -ge 3 ] && [ "$OK_COUNT" -eq 0 ]; then
+                      echo "stuck: $pod (errors=$ERR_COUNT successes=$OK_COUNT)"
+                      STUCK_PODS="$STUCK_PODS $pod"
+                    else
+                      echo "ok: $pod (errors=$ERR_COUNT successes=$OK_COUNT)"
+                    fi
+                  done
+
+                  if [ -z "$STUCK_PODS" ]; then
+                    echo "all chirpstack-core pods healthy"
+                    exit 0
+                  fi
+
+                  echo "rolling restart of chirpstack-core (stuck pods:$STUCK_PODS)"
+                  kubectl -n "$NS" rollout restart deployment/chirpstack-core
+                  echo "restart triggered; pods will recycle over the next ~60-90s"
+
+                  # Best-effort ops alert. Failure to reach the notify
+                  # service mustn't fail the watchdog — restart already
+                  # happened and is the user-visible recovery.
+                  curl -sS -X POST \
+                    -H 'content-type: application/json' \
+                    -d "{\"kind\":\"chirpstack_amqp_wedged_restarted\",\"severity\":\"high\",\"message\":\"chirpstack-core AMQP channel was stuck; rollout restart triggered\",\"details\":{\"stuck_pods\":\"$STUCK_PODS\",\"namespace\":\"$NS\"}}" \
+                    "http://noctel-api-notify.${NS}.svc.cluster.local:7130/ops-alert" \
+                    2>/dev/null || echo "ops-alert post failed (watchdog continues)"
+              resources:
+                requests:
+                  cpu: 20m
+                  memory: 32Mi
+                limits:
+                  cpu: 100m
+                  memory: 64Mi
+{{- end }}

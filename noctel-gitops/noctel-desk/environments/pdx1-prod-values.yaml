@@ -1,0 +1,38 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+
+noctel-desk:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1280Mi
+  env:
+    NODE_ENV: "prod"
+    # Public API URL — desk loaded from any of the accepted hostnames
+    # below makes XHR/WS to api2.noctel.com (the LB-fronted hostname).
+    # Internal-direct desk users still resolve api2.noctel.com (public
+    # DNS reachable from the VPN) and pay one extra LB hop, which is
+    # acceptable for the simpler one-config story.
+    API_URL: "https://api2.noctel.com"
+    WS_URL: "wss://api2.noctel.com/ws"
+    PROVISIONING_URL: "https://p.noc.tel"
+  ingress:
+    enabled: true
+    ingressClassName: traefik-prod
+    hosts:
+      - pdx1-prod-desk.telnoc.com
+      # - desk.noctel.com  # commented out to avoid ACME cert provisioning

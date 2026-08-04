@@ -1,0 +1,61 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-alerts
+  namespace: monitoring
+  labels:
+    component: argocd
+spec:
+  groups:
+  - name: argocd
+    interval: 30s
+    rules:
+    - alert: ArgoCDServerDown
+      expr: up{job="argocd-metrics"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: argocd
+      annotations:
+        summary: "ArgoCD server is unreachable"
+        description: "ArgoCD metrics are unavailable"
+
+    - alert: ArgoCDAppSyncFailure
+      expr: argocd_app_info{sync_status="OutOfSync"} and on(name) argocd_app_reconcile_total{job="argocd-metrics"} > 0
+      for: 30m
+      labels:
+        severity: warning
+        component: argocd
+      annotations:
+        summary: "ArgoCD app out of sync for extended period"
+        description: "App {{ $labels.name }} has been out of sync for more than 30 minutes"
+
+    - alert: ArgoCDRepoServerLatency
+      expr: histogram_quantile(0.99, rate(argocd_git_request_duration_seconds_bucket[5m])) > 5
+      for: 10m
+      labels:
+        severity: warning
+        component: argocd
+      annotations:
+        summary: "High ArgoCD repo-server latency"
+        description: "99th percentile git operation latency is {{ $value | humanize }}s"
+
+    - alert: ArgoCDApplicationCRDErrors
+      expr: rate(argocd_app_reconcile_total{status="error"}[5m]) > 0
+      for: 10m
+      labels:
+        severity: warning
+        component: argocd
+      annotations:
+        summary: "ArgoCD application reconciliation errors"
+        description: "ArgoCD is experiencing {{ $value | humanize }} reconciliation errors per second"
+
+    - alert: ArgoCDRepoServerConnectionErrors
+      expr: increase(argocd_git_request_total{status="error"}[5m]) > 10
+      for: 10m
+      labels:
+        severity: warning
+        component: argocd
+      annotations:
+        summary: "ArgoCD git connection failures"
+        description: "ArgoCD repo-server has experienced {{ $value }} git connection errors in the last 5 minutes"

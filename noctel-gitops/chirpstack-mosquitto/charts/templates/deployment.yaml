@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "chirpstack-mosquitto" "version" }}
+spec:
+  replicas: {{ index .Values "chirpstack-mosquitto" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        version: {{ index .Values "chirpstack-mosquitto" "version" }}
+    spec:
+      {{- with index .Values "chirpstack-mosquitto" "nodeSelector" }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with index .Values "chirpstack-mosquitto" "affinity" }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: mosquitto
+        image: "eclipse-mosquitto:{{ index .Values "chirpstack-mosquitto" "version" }}"
+        imagePullPolicy: {{ index .Values "chirpstack-mosquitto" "image" "pullPolicy" }}
+        ports:
+        - containerPort: 1883
+          name: mqtt
+          protocol: TCP
+        {{- with index .Values "chirpstack-mosquitto" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with index .Values "chirpstack-mosquitto" "containerSecurityContext" }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /mosquitto/config
+          name: config
+          readOnly: true
+      {{- with index .Values "chirpstack-mosquitto" "securityContext" }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ .Chart.Name }}-config

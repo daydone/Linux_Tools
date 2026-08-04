@@ -1,0 +1,16 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  environment: prod
+  domain:
+    prefix: pdx1-prod
+    base: noctel.com
+
+noctel-api-billing:
+  version: "latest"
+  replicaCount: 3
+  image:
+    pullPolicy: Always
+  env:
+    SERVICE_NAME: billing
+  secrets:

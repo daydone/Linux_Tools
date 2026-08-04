@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    metallb.universe.tf/address-pool: prod-vlan-pool
+    metallb.universe.tf/allow-shared-ip: "prod-chirpstack"
+  labels:
+    app: chirpstack-core
+    cilium.io/l2-pool: prod-vlan
+  name: chirpstack-core-lb
+  namespace: prod
+spec:
+  allocateLoadBalancerNodePorts: true
+  externalTrafficPolicy: Cluster
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  loadBalancerIP: 10.0.99.82
+  ports:
+  - name: api-http
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    app: chirpstack-core
+  sessionAffinity: None
+  type: LoadBalancer

@@ -1,0 +1,58 @@
+global:
+  namespace: qa
+
+seaweedfs:
+    version: "3.57"
+    replicaCount: 3
+    initBuckets:
+      - test-bucket
+      - default
+      - prod
+    image:
+      repository: chrislusf/seaweedfs
+      pullPolicy: IfNotPresent
+    # Use external SeaweedFS cluster on VLAN 650
+    externalMaster:
+      enabled: true
+      endpoint: "pdx-s3-master.telnoc.com:9333"  # 10.0.91.24
+    # Don't deploy masters/volumes in k8s - use external cluster
+    deployMaster: false
+    deployVolume: false
+    deployFiler: true   # Deploy filer to access external cluster
+    deployS3: true      # Deploy S3 gateway
+    ingress:
+      filer:
+        enabled: true
+        name: qa-filer-ingress
+        ingressClassName: traefik-qa
+        hosts:
+          - host: pdx1-qa-filer.telnoc.com
+        tls:
+          - hosts:
+              - pdx1-qa-filer.telnoc.com
+    # Enable Cilium egress gateway to route traffic through VLAN 650
+    egressGateway:
+      enabled: true
+      interface: bond0.650
+    # S3 API Access Control Configuration - bucket-scoped credentials
+    s3:
+      configMap:
+        enabled: true
+        name: seaweedfs-s3-config-qa
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    persistence:
+      enabled: false
+    filer:
+      s3:
+        enabled: true
+        port: 8333
+    securityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      fsGroup: 1000

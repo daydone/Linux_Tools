@@ -1,0 +1,9 @@
+apiVersion: v2
+name: noctel-desk
+description: NocTel Desk - Angular admin portal for the NocTel Talk platform
+type: application
+version: 0.1.0
+appVersion: "latest"
+maintainers:
+  - name: NocTel Team
+    email: tech@noctel.com

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  annotations:
+    reloader.stakater.com/auto: "true"
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+    version: {{ index .Values "noctel-desk" "version" }}
+spec:
+  replicas: {{ index .Values "noctel-desk" "replicaCount" }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+        app.kubernetes.io/name: noctel
+        version: {{ index .Values "noctel-desk" "version" }}
+    spec:
+      {{- if .Values.global.imagePullSecrets }}
+      nodeSelector:
+        node-role.kubernetes.io/worker: "true"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - noctel
+              topologyKey: kubernetes.io/hostname
+
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "pdx-harbor.telnoc.com/noctel/{{ .Chart.Name }}:{{ index .Values "noctel-desk" "version" }}"
+        imagePullPolicy: {{ index .Values "noctel-desk" "image" "pullPolicy" }}
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        {{- with index .Values "noctel-desk" "resources" }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: env-js
+          mountPath: /usr/share/nginx/html/assets/env.js
+          subPath: env.js
+      volumes:
+      - name: env-js
+        configMap:
+          name: {{ .Chart.Name }}-env

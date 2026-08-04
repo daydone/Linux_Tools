@@ -1,0 +1,62 @@
+{{- if not .Values.rabbitmq.createUser }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-definitions
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  # definitions.json is loaded at broker startup via
+  # management.load_definitions (see rabbitmq-cluster.yaml) and contains
+  # this namespace's users / permissions / vhosts / queues / exchanges /
+  # bindings.
+  #
+  # Every environment MUST supply its own rabbitmq.definitions block —
+  # no shared / hardcoded credentials, no cross-namespace user lists.
+  # Helm will refuse to render this chart if the key is missing.
+  #
+  # Password hashes: RabbitMQ expects base64(salt[4] || sha256(salt || pw))
+  # with hashing_algorithm = rabbit_password_hashing_sha256. Use
+  # charts/rabbitmq/bin/gen-hash.py to generate.
+  {{- $d := required "rabbitmq.definitions must be set — see charts/rabbitmq/README.md for schema" .Values.rabbitmq.definitions }}
+  definitions.json: |-
+    {
+      "rabbit_version": {{ $d.rabbitVersion | default "4.1.1" | quote }},
+      "rabbitmq_version": {{ $d.rabbitVersion | default "4.1.1" | quote }},
+      "product_name": "RabbitMQ",
+      "product_version": {{ $d.rabbitVersion | default "4.1.1" | quote }},
+      "users": {{ required "rabbitmq.definitions.users is required" $d.users | toJson }},
+      "vhosts": {{ $d.vhosts | default (list (dict "name" "/")) | toJson }},
+      "permissions": {{ required "rabbitmq.definitions.permissions is required" $d.permissions | toJson }},
+      "topic_permissions": {{ $d.topicPermissions | default list | toJson }},
+      "parameters": {{ $d.parameters | default list | toJson }},
+      "global_parameters": {{ $d.globalParameters | default list | toJson }},
+      "policies": {{ $d.policies | default list | toJson }},
+      "queues": {{ $d.queues | default list | toJson }},
+      "exchanges": {{ $d.exchanges | default list | toJson }},
+      "bindings": {{ $d.bindings | default list | toJson }}
+    }
+{{- else }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-definitions
+  namespace: {{ .Values.global.namespace | default "default" }}
+data:
+  definitions.json: |
+    {
+      "rabbit_version": "4.1.1",
+      "rabbitmq_version": "4.1.1",
+      "product_name": "RabbitMQ",
+      "product_version": "4.1.1",
+      "users": [],
+      "vhosts": [{"name": "/", "description": "Default virtual host"}],
+      "permissions": [],
+      "topic_permissions": [],
+      "parameters": [],
+      "global_parameters": [],
+      "policies": [],
+      "queues": [],
+      "exchanges": [],
+      "bindings": []
+    }
+{{- end }}

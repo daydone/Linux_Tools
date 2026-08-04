@@ -1,0 +1,36 @@
+---
+# Daily backup job - keeps 7 days of backups (current week only)
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: daily-backup-7days
+  namespace: longhorn-system
+spec:
+  cron: "0 9 * * *"  # 9 AM UTC = 2 AM PDT every day
+  task: "backup"
+  groups:
+  - default
+  retain: 7
+  concurrency: 1
+  labels:
+    app: longhorn
+    backup-type: daily
+
+---
+# Weekly backup job - keeps 26 weeks (6 months) of backups
+# DISABLED FOR NOW - storage cost too high. Re-enable if long-term retention needed.
+# apiVersion: longhorn.io/v1beta2
+# kind: RecurringJob
+# metadata:
+#   name: weekly-backup-26weeks
+#   namespace: longhorn-system
+# spec:
+#   cron: "0 10 * * 0"  # 10 AM UTC = 3 AM PDT every Sunday
+#   task: "backup"
+#   groups:
+#   - default
+#   retain: 26
+#   concurrency: 1
+#   labels:
+#     app: longhorn
+#     backup-type: weekly

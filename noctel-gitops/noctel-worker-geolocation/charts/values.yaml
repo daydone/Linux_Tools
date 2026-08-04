@@ -1,0 +1,86 @@
+# Default values for noctel-worker-geolocation. Per-env overrides
+# live under environments/<env>-values.yaml.
+#
+# Worker shape: AMQP consumer + ChirpStack gRPC client. No HTTP API.
+# Health/metrics port only (9295).
+
+replicaCount: 1
+
+image:
+  repository: noctel/noctel-worker-geolocation
+  pullPolicy: Always
+  tag: ""  # defaults to chart appVersion; per-env values override
+
+imagePullSecrets:
+  - name: harbor-pull
+  - name: dockerhub-secret
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9295"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  healthPort: 9295
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Per-region single worker by default. Multi-replica is fine — the
+# AMQP queue is shared and prefetch handles concurrency. Crank up
+# when scan volume warrants.
+autoscaling:
+  enabled: false
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - noctel-worker-geolocation
+          topologyKey: kubernetes.io/hostname
+
+# Cache TTL defaults (per shared/cache config in src/config.js).
+# Per-source freshness windows; per-env values can override.
+config:
+  logLevel: info
+  wifiTtlDays: 30
+  wifiHardExpiryDays: 90
+  bleTtlDays: 180
+
+# Connection details inherited from noctel-platform-env configmap +
+# noctel-api-secrets secret (envFrom). No per-service secret block
+# here — secrets are shared per feedback_shared_env_configmap.

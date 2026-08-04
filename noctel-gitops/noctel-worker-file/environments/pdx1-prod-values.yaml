@@ -1,0 +1,20 @@
+global:
+  cluster: pdx1
+  namespace: prod
+  domain: { prefix: pdx1-prod, base: noctel.com }
+
+noctel-worker-file:
+  version: "latest"
+  replicaCount: 3
+  image:
+    repository: pdx-harbor.telnoc.com/noctel/noctel-api-file-worker
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9275"
+    HOST: "0.0.0.0"
+    SERVICE_NAME: file-worker
+    LOG_LEVEL: info
+    NODE_ENV: production
+  resources:
+    requests: { cpu: 200m, memory: 256Mi }
+    limits:   { cpu: "2", memory: 1Gi }

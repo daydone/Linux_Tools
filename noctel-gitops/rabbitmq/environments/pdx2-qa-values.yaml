@@ -1,0 +1,41 @@
+  # Cluster configuration
+  image: "rabbitmq:4.1.1-management"
+  replicaCount: 3
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+  # Storage configuration
+  persistence:
+    storage: "20Gi"
+    storageClass: "longhorn"
+  # Environment-specific users and queues
+  users:
+    - name: "default_user_qa"
+      tags: ["administrator"]
+    - name: "qa_api"
+      tags: []
+    - name: "qa_mailer"
+      tags: []
+  queues:
+    - name: "mail-out"
+      durable: true
+    - name: "chirp-pdx2-qa"
+      durable: true
+      arguments:
+        x-message-ttl: 86400000
+    - name: "lns-operations-pdx2-qa"
+      durable: true
+      arguments:
+        x-dead-letter-routing-key: "lns-operations-pdx2-qa-dlq"
+        x-message-ttl: 3600000
+    - name: "lns-operations-pdx2-qa-dlq"
+      durable: true
+      arguments:
+        x-message-ttl: 86400000
+  # Environment-specific cluster name
+  clusterName: "ha-rabbit-qa"

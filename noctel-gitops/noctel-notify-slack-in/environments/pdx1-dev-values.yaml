@@ -1,0 +1,26 @@
+global:
+  cluster: pdx1
+  namespace: dev
+  domain:
+    prefix: pdx1-dev
+    base: telnoc.com
+
+noctel-notify-slack-in:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9404"
+    HTTP_PORT: "7404"
+    SERVICE_NAME: noctel-notify-slack-in
+    ELASTICSEARCH_INDEX_ACTIVITY: noctel-notify-activity
+  secrets:
+    # All three Slack App credentials + the OAuth state signing key
+    # live in the shared noctel-api-secrets Secret (envFrom on the
+    # deployment picks them up). Per-env values are kept in 1Password
+    # and applied via kubectl, never committed here:
+    #   SLACK_CLIENT_ID
+    #   SLACK_CLIENT_SECRET
+    #   SLACK_SIGNING_SECRET
+    #   OAUTH_STATE_SECRET

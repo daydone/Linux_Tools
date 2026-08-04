@@ -1,0 +1,59 @@
+# Platform-wide environment for pdx2 / dev namespace.
+# See pdx1-dev-platform-env.yaml for the scope rules.
+#
+# NOTE: pdx2 cluster external dependencies (DB host, RabbitMQ host,
+# Redis host, Elasticsearch) are not yet populated in the existing
+# values files. Placeholders below; operator should replace before
+# the first service deploys into pdx2/dev.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: noctel-platform-env
+  namespace: dev
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  NODE_ENV: development
+  LOG_LEVEL: info
+  CLUSTER: pdx2
+  NAMESPACE: dev
+
+  # MySQL — DATABASE_URL in noctel-api-secrets
+
+  GATEWAY_URL:    http://noctel-api-gateway:7100
+  FRONTEND_URL:   http://noctel-desk:80
+  PUB_NTAPI_URL:  https://pdx2-dev-api-gateway.telnoc.com
+  SERVICE_CACHE_SYNC_URL: http://noctel-api-cache-sync.dev.svc.cluster.local:7190
+
+  SERVICE_ACCOUNT_URL:     http://noctel-api-account:7110
+  SERVICE_BILLING_URL:     http://noctel-api-billing:7180
+  SERVICE_CNAM_URL:        http://noctel-api-cnam:7340
+  SERVICE_DEVICES_URL:     http://noctel-api-devices:7230
+  SERVICE_DEX_URL:         http://noctel-api-dex:7140
+  SERVICE_E911_URL:        http://noctel-api-e911:7350
+  SERVICE_FLOW_URL:        http://noctel-api-flow:7240
+  SERVICE_MAILBOX_URL:     http://noctel-api-mailbox:7150
+  SERVICE_MESSAGING_URL:   http://noctel-api-messaging:7330
+  SERVICE_MONITOR_URL:     http://noctel-api-monitor:7260
+  SERVICE_NOTIFY_URL:      http://noctel-api-notify:7130
+  SERVICE_NUMBERS_URL:     http://noctel-api-numbers:7310
+  SERVICE_PORTING_URL:     http://noctel-api-porting:7320
+  SERVICE_REALTIME_URL:    http://noctel-api-realtime:7210
+  SERVICE_STORAGE_URL:     http://noctel-api-storage:7170
+  SERVICE_SUPER_URL:       http://noctel-api-super:7271
+  SERVICE_TALK_URL:        http://noctel-api-talk:7200
+  SERVICE_WIREGUARD_URL:   http://noctel-api-wireguard:7270
+  SERVICE_WORKFLOW_URL:    http://noctel-api-workflow:7160
+
+  SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+
+  HISTORY_ENABLED:         "1"
+  HISTORY_READS:           "0"
+  HISTORY_WRITES:          "1"
+  HISTORY_BULK:            "1"
+  HISTORY_PII_UNMASK:      "0"
+  HISTORY_EXCHANGE:        noctel.history
+  HISTORY_QUEUE:           history.index
+  HISTORY_RETENTION_DAYS:  "90"
+  HISTORY_ROLLOVER_GB:     "10"
+  HISTORY_EXCLUDE_TABLES:  "session,refresh_token,rate_limit,api_key_usage_log,schema_migrations,noctel_migrations"

@@ -1,0 +1,72 @@
+traefik:
+  replicas: 1
+  image:
+    name: traefik
+    tag: v3.5.0
+  args:
+    - --api.dashboard=true
+    - --api.insecure=true
+    - --accesslog=true
+    - --entrypoints.web.address=:80
+    - --entrypoints.websecure.address=:443
+    - --entrypoints.traefik.address=:8080
+    - --entrypoints.metrics.address=:9101
+    - --entrypoints.amqp.address=:5672/tcp
+    - --providers.kubernetescrd
+    - --providers.kubernetesingress
+    - --log.level=INFO
+    - --metrics.prometheus=true
+    - --metrics.prometheus.entryPoint=metrics
+    - --providers.kubernetescrd.allowEmptyServices=true
+    - --providers.kubernetesingress.allowEmptyServices=true
+    - --providers.kubernetesingress.ingressendpoint.publishedservice=management/traefik-management
+    - --providers.kubernetescrd.namespaces=management,argocd,cattle-system,monitoring,kube-system,prod
+    - --providers.kubernetesingress.namespaces=management,argocd,cattle-system,monitoring,kube-system,prod
+    - --entryPoints.websecure.http.tls=true
+    - --entryPoints.websecure.http.tls.certResolver=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.provider=dnsmadeeasy
+    - --certificatesresolvers.dnsmadeeasy.acme.email=noc@telnoc.com
+    - --certificatesresolvers.dnsmadeeasy.acme.dnschallenge.resolvers=8.8.8.8
+    - --certificatesresolvers.dnsmadeeasy.acme.storage=/ssl-certs/acme-dnsmadeeasy.json
+    - --certificatesresolvers.dnsmadeeasy.acme.caserver=https://acme-v02.api.letsencrypt.org/directory
+    - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    - --entryPoints.websecure.forwardedHeaders.trustedIPs=10.0.96.0/24
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+  env:
+    - name: DNSMADEEASY_API_EMAIL
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: email
+    - name: DNSMADEEASY_API_KEY
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-key
+    - name: DNSMADEEASY_API_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: dnsmadeeasy-credentials
+          key: api-secret
+  persistence:
+    enabled: false
+  service:
+    type: LoadBalancer
+    loadBalancerIP: 10.0.96.140
+    allocateLoadBalancerNodePorts: true
+    externalTrafficPolicy: Cluster
+    internalTrafficPolicy: Cluster
+    ports:
+      web: 80
+      websecure: 443
+      metrics: 9100
+      amqp: 5672
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: "true"

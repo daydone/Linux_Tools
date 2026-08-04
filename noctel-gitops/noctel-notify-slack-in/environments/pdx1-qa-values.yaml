@@ -1,0 +1,22 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-notify-slack-in:
+  version: "latest"
+  replicaCount: 1
+  image:
+    pullPolicy: Always
+  env:
+    HEALTH_PORT: "9404"
+    HTTP_PORT: "7404"
+    SERVICE_NAME: noctel-notify-slack-in
+    ELASTICSEARCH_INDEX_ACTIVITY: noctel-notify-activity
+  secrets:
+    # SLACK_CLIENT_ID / SLACK_CLIENT_SECRET / SLACK_SIGNING_SECRET /
+    # OAUTH_STATE_SECRET come from the shared noctel-api-secrets
+    # Secret (envFrom). Per-env values live in 1Password and are
+    # applied via kubectl, never committed here.

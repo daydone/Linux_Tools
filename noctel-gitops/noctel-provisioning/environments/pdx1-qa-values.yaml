@@ -1,0 +1,46 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+noctel-provisioning:
+  version: "latest"
+  replicaCount: 2
+  image:
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: harbor-pull
+    - name: dockerhub-secret
+  env:
+    PORT: "7361"
+    HEALTH_PORT: "9361"
+    SERVICE_NAME: noctel-provisioning
+    # Reachable on the stable MetalLB address 10.0.98.156:7361 (see
+    # service.yaml). Point the noctel-haproxy provisioning backend +
+    # qa DNS (p.mock.tel) at that IP. Device-facing routes still
+    # return 503 until the HA1-migrated templates land.
+    #
+    # SIP registration target rendered into phone configs (pbx.host /
+    # reg.x.server.address). This is the SRV ZONE the phone resolves, NOT the
+    # auth realm. QA SRV (verified 2026-06-10):
+    #   _sip._udp.talk.mocktel.net -> 100 100 5060 pdx-sbc0.talk.mocktel.net (192.69.31.40)
+    # The bare zone has no A record, so the phone MUST use SRV. Port "0" tells
+    # Polycom to resolve via _sip._udp SRV instead of a direct A:port (an empty
+    # string would be falsy and the service would default it back to 5061).
+    # The DB Poly template must render reg.x.server.port="0" (or omit it) and
+    # transport "UDPOnly" for the SRV lookup to actually happen.
+    SIP_DOMAIN: talk.mocktel.net
+    # Polycom literal, NOT "UDP": valid reg.x.server.transport values are
+    # UDPOnly / TCPpreferred / TCPOnly / TLS / DNSnaptr. context.js passes this
+    # through raw (no mapping yet), and the template emits it verbatim, so it
+    # must already be a Poly value. UDPOnly + port 0 => the phone does the
+    # _sip._udp SRV lookup.
+    SIP_TRANSPORT: UDPOnly
+    SIP_REGISTRAR_PORT: "0"
+    # Digest auth realm is the ONE platform realm, fixed in every env (opaque
+    # 401 key, need not resolve). Distinct from SIP_DOMAIN on purpose so one HA1
+    # authenticates a device in any env. Provided platform-wide; pinned here for
+    # clarity since this service renders SIP credentials.
+    SIP_REALM: talk.noctel.net

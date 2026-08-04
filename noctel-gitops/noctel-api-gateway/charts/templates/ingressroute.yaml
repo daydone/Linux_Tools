@@ -1,0 +1,38 @@
+{{- if .Values.ingressRoute.enabled }}
+{{- /*
+  Hostnames this IngressRoute accepts on the websecure entrypoint.
+    - hosts: [a.example.com, b.example.com]   (preferred, multi-host)
+    - host: a.example.com                     (legacy, single host)
+  hosts wins when both set. The `tls.domains` block also gets every
+  hostname so the Traefik cert resolver requests SANs for all of them.
+  When fronted by an external LB that terminates the public cert, the
+  internal hostname is the only one that needs a real cert from
+  dnsmadeeasy; the public-facing names get accepted via the Host match
+  but TLS for them can be terminated upstream and re-encrypted to the
+  cluster's internal cert.
+*/}}
+{{- $hosts := .Values.ingressRoute.hosts -}}
+{{- if not $hosts -}}{{- $hosts = list .Values.ingressRoute.host -}}{{- end -}}
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ .Chart.Name }}-tls
+  namespace: {{ .Values.global.namespace | default "default" }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: {{ range $i, $h := $hosts }}{{ if $i }} || {{ end }}Host(`{{ $h }}`){{ end }}
+      kind: Rule
+      services:
+        - name: {{ .Chart.Name }}
+          port: 7100
+  tls:
+    certResolver: dnsmadeeasy
+    domains:
+      {{- range $h := $hosts }}
+      - main: {{ $h }}
+      {{- end }}
+{{- end }}

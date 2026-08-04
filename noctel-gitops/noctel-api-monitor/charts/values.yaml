@@ -1,0 +1,13 @@
+global:
+  namespace: default
+
+noctel-api-monitor:
+  replicaCount: 1
+  version: "latest"
+  image:
+    pullPolicy: IfNotPresent
+  securityContext:
+    fsGroup: 1001
+    runAsGroup: 1001
+    runAsNonRoot: true
+    runAsUser: 1001

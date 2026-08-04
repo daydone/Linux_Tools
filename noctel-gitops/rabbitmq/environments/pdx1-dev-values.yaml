@@ -1,0 +1,70 @@
+global:
+  namespace: dev
+
+rabbitmq:
+    version: "3.12"
+    replicaCount: 3
+    auth:
+      username: default_user_GFf1NhE9qf9PHnK9l9V
+      password: UgRDf4wakPfzowuk04Nqx_1s2xqOiZ15
+    # Per-namespace broker definitions — loaded at broker startup via
+    # management.load_definitions. Only dev_api, the shared service-to-
+    # service user. No admin user in definitions.json; cluster admin
+    # tasks go through kubectl exec + rabbitmqctl.
+    #
+    # Service plaintexts live in the external secrets vault as
+    # AMQP_URL inside noctel-api-secrets (namespace-scoped). The
+    # password_hash below MUST correspond to the plaintext encoded in
+    # that AMQP_URL. On rotation: generate a new plaintext, hash it
+    # with `charts/rabbitmq/bin/gen-hash.py`, update BOTH the vault's
+    # AMQP_URL AND the password_hash here in the same change.
+    definitions:
+      users:
+        - name: dev_api
+          password_hash: "Cf3iwx6U+N0/YNi4d14qmbZckLeafDbHKiNzUoIuwlIr+MeF"
+          hashing_algorithm: rabbit_password_hashing_sha256
+          tags: []
+          limits: {}
+      vhosts:
+        - name: "/"
+          description: "Default virtual host"
+          metadata:
+            description: "Default virtual host"
+            tags: []
+            default_queue_type: classic
+          tags: []
+      permissions:
+        - user: dev_api
+          vhost: "/"
+          configure: ".*"
+          write: ".*"
+          read: ".*"
+      globalParameters:
+        - name: cluster_name
+          value: ha-rabbit-dev
+    # Management UI — dev-only. qa/prod leave ingressRoute.enabled unset
+    # (Helm renders the template as a no-op). Access qa/prod via
+    # `kubectl port-forward svc/ha-rabbit 15672` when needed.
+    management:
+      ingressRoute:
+        enabled: true
+        host: pdx1-dev-rabbitmq.telnoc.com
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: longhorn
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    securityContext:
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+    nodeSelector:
+      node-role.kubernetes.io/worker: "true"
+    externalLoadBalancerIP: 10.0.97.161
+    metalLBPool: dev-vlan-pool

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: noctel-qa
+  namespace: argocd
+spec:
+  description: NocTel QA Environment
+  
+  # Source repositories
+  sourceRepos:
+  - 'git@bitbucket.org:noctel-bitbucket/noctel-gitops.git'
+  - 'https://charts.bitnami.com/bitnami'
+  
+  # Allowed destinations
+  destinations:
+  - namespace: qa
+    server: https://kubernetes.default.svc
+  
+  # Allowed cluster resources
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io
+    kind: ClusterRoleBinding
+  
+  # Namespace-scoped resources (allow all)
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  # Roles for this project
+  roles:
+  - name: qa-admin
+    description: Full access to qa environment
+    policies:
+    - p, proj:noctel-qa:qa-admin, applications, *, noctel-qa/*, allow
+    - p, proj:noctel-qa:qa-admin, repositories, *, *, allow

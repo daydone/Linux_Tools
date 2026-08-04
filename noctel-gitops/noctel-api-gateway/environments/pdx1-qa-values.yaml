@@ -1,0 +1,47 @@
+global:
+  cluster: pdx1
+  namespace: qa
+  domain:
+    prefix: pdx1-qa
+    base: telnoc.com
+
+ingressRoute:
+  enabled: true
+  # Multi-host on the same Traefik route — external LB forwards
+  # api.mocktel.com, internal users / sidecars hit pdx1-qa-api-gateway
+  # directly. Both terminate at the same Service.
+  hosts:
+    - pdx1-qa-api-gateway.mocktel.com
+    - api.mocktel.com
+
+traefik:
+  tlsForwarding:
+    enabled: false
+
+tls:
+  enabled: true
+  host: pdx1-qa-api-gateway.mocktel.com
+
+noctel-api-gateway:
+  version: "latest"
+  replicaCount: 3
+  ingress:
+    enabled: true
+    ingressClassName: traefik-qa
+    host: pdx1-qa-api-gateway.mocktel.com
+    metricsHost: pdx1-qa-api-gateway-metrics.mocktel.com
+  env:
+    HTTP_PORT: "7100"
+    HEALTH_PORT: "9100"
+    JWT_ALGORITHM: "HS256"
+    # Explicit allowlist replaces the wildcard default. credentials:true
+    # in the gateway's CORS plugin means '*' is rejected by browsers
+    # whenever a request carries cookies or auth headers, so we name
+    # every origin the desk runs on. Add prod hostnames here when the
+    # public LB fronts them too.
+    CORS_ORIGIN: "https://desk.mocktel.com,https://pdx1-qa-desk.mocktel.com"
+    #    DB_HOST: qa-ddb.telnoc.com
+    #    DB_PORT: "3306"
+    #    DB_NAME: ntc_qa
+    #    DB_USER: noctel_qa
+    #    DB_PASSWORD: "XQFVF0IxK0UCA5rq0St88n8F"

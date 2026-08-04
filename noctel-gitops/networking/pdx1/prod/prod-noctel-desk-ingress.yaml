@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: noctel-desk-ingress
+  namespace: prod
+spec:
+  ingressClassName: traefik-prod
+  rules:
+  - host: pdx1-prod-desk.telnoc.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: noctel-desk
+            port:
+              number: 80

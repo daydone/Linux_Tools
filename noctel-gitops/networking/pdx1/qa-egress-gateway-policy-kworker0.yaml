@@ -1,0 +1,32 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: qa-chirpstack-gateway-bridge-egress
+spec:
+  # Select chirpstack-gateway-bridge pods in qa namespace
+  selectors:
+  - namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: qa
+    podSelector:
+      matchLabels:
+        app: chirpstack-gateway-bridge
+
+  # Route all external traffic through the qa VLAN gateway
+  destinationCIDRs:
+  - "0.0.0.0/0"
+
+  # Don't SNAT internal cluster traffic
+  excludedCIDRs:
+  - "10.0.0.0/8"
+  - "10.42.0.0/16"
+  - "10.43.0.0/16"
+
+  # Route through bond0.678 with static service IP for firewall NAT
+  # Firewall NAT: pdx1-chirpstack 10.0.98.80 → 192.69.31.139
+  egressGateway:
+    interface: "bond0.678"
+    egressIP: "10.0.98.80"
+    nodeSelector:
+      matchLabels:
+        node-role.kubernetes.io/worker: "true"
